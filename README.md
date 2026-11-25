@@ -34,7 +34,7 @@
 
 ## 下载
 
-在本仓库的 **[发行版（Releases）](https://github.com/sinowjy-ux/ai-dingpan-assistant/releases/latest)** 页面下载最新版本：
+在本仓库的 **[发行版（Releases）](https://github.com/sinowjy-ux/ai-dingpan-assistant/releases)** 页面下载最新版本：
 
 | 文件 | 适用 |
 |---|---|
