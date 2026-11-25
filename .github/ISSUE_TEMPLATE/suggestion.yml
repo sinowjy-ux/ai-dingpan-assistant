@@ -1,0 +1,17 @@
+name: 意见建议
+description: 想加的功能、觉得不好用的地方、方法规则的建议
+title: "[建议] "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: page
+    attributes:
+      label: 关于哪个部分
+      options: ["统计", "每日复盘", "AI 盯盘", "主力选股", "个股研判", "界面 / 操作", "说明书", "其他"]
+  - type: textarea
+    id: idea
+    attributes:
+      label: 你的建议
+      description: 希望怎么改、为什么。软件不提供荐股，请不要提“推荐买哪只”这类需求。
+    validations:
+      required: true

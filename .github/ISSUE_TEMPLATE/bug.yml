@@ -1,0 +1,34 @@
+name: 问题反馈（Bug）
+description: 软件打不开、报错、数据不对、功能不正常
+title: "[问题] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: 感谢反馈！请不要填写手机号、微信号等个人信息。
+  - type: input
+    id: version
+    attributes:
+      label: 版本号
+      description: App 统计页标题旁或网页版导航栏可以看到，例如 v1.0.0-beta.1
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: 电脑系统
+      options: ["Mac（Apple 芯片）", "Mac（Intel）", "Windows 10", "Windows 11", "其他"]
+    validations:
+      required: true
+  - type: dropdown
+    id: page
+    attributes:
+      label: 哪个页面
+      options: ["统计", "每日复盘", "AI 盯盘", "主力选股", "个股研判", "安装 / 启动", "其他"]
+  - type: textarea
+    id: what
+    attributes:
+      label: 发生了什么
+      description: 怎么操作的、看到了什么、本来以为会怎样。有截图更好。
+    validations:
+      required: true
