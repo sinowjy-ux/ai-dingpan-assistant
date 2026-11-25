@@ -1,0 +1,56 @@
+/* 各页面共用样式（统计、每日复盘）。配色跟随系统浅色/深色。 */
+:root{
+  --bg:#f3f5f8; --panel:#ffffff; --ink:#122033; --ink2:#4a5a70; --line:#dde3ea; --soft:#eef2f6;
+  --accent:#1f5fae; --accent-soft:#e3ecf8; --up:#d23f31; --down:#16875a; --warn:#b7791f; --gold:#b8860b;
+  --good:#16875a; --bad:#c4462d;
+  --f-body:"PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;
+  --f-num:ui-monospace,"Cascadia Mono",Consolas,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0e141c; --panel:#151d28; --ink:#e4ebf3; --ink2:#9aabbf; --line:#263244; --soft:#1b2533;
+  --accent:#6ea8ff; --accent-soft:#1c2c45; --up:#f0675a; --down:#3fbf86; --warn:#e0a84a; --gold:#f5c451;
+  --good:#3fbf86; --bad:#f07a5f; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.6 var(--f-body)}
+.wrap{max-width:1400px;margin:0 auto;padding:16px 16px 60px}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+h1{font-size:22px;font-weight:900;margin:0 0 4px}
+h2{font-size:17px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+h2 .n{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--up);color:#fff;font-size:12px}
+.sub{color:var(--ink2);font-size:13px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin-top:14px}
+button{font:inherit;cursor:pointer}
+.btn{font-weight:700;padding:7px 14px;border:0;border-radius:6px;background:var(--accent);color:#fff}
+.btn.ghost{background:var(--soft);color:var(--ink);border:1px solid var(--line)}
+.btn.danger{background:var(--bad)}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+select,input[type=text]{font:inherit;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th.l,td.l{text-align:left}
+th{color:var(--ink2);font-weight:500;font-size:12px;position:sticky;top:0;background:var(--panel)}
+.pos{color:var(--up)} .neg{color:var(--down)} .dim{color:var(--ink2)} .gold{color:var(--gold)}
+.grid{display:grid;gap:12px}
+.kpis{display:flex;gap:10px;flex-wrap:wrap}
+.kpi{background:var(--soft);border-radius:8px;padding:8px 14px;min-width:120px}
+.kpi .k{font-size:12px;color:var(--ink2)} .kpi .v{font:600 22px var(--f-num)}
+.pill{display:inline-block;padding:0 8px;border-radius:99px;font-size:12px;border:1px solid var(--line);background:var(--soft)}
+.star{border:0;background:none;font-size:16px;line-height:1;color:var(--ink2);padding:0 2px}
+.star.on{color:var(--gold)}
+.empty{padding:28px;text-align:center;color:var(--ink2)}
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--gold);
+  border-radius:99px;padding:8px 18px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.25);z-index:50}
+/* 导航 */
+nav.top{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+nav.top a{color:var(--ink2);text-decoration:none;padding:6px 12px;border-radius:6px;font-weight:500}
+nav.top a.on{background:var(--accent);color:#fff}
+nav.top a:hover:not(.on){background:var(--soft)}
+nav.top .brand{font-weight:900;margin-right:10px;color:var(--ink)}
+nav.top .sp{flex:1}
+nav.top .quit{background:none;border:1px solid var(--line);color:var(--ink2);border-radius:6px;padding:4px 10px}
+/* 免责声明弹窗 */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:grid;place-items:center;z-index:100}
+.modal .box{background:var(--panel);border-radius:12px;max-width:560px;padding:22px 24px;border:1px solid var(--line)}
+.modal h3{margin:0 0 10px}
+.modal li{margin:4px 0}

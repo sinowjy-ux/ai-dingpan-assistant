@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<script>
+// 界面颜色（?theme= 可指定）；?embed=1 表示嵌在 Mac App 里，隐藏网页自己的导航
+(function(){ const q = new URLSearchParams(location.search), t = q.get("theme");
+  if (["dark","light","system"].includes(t)) localStorage.setItem("aidp_theme", t);
+  document.documentElement.dataset.theme = localStorage.getItem("aidp_theme") || "dark";
+  if (q.get("embed") === "1") { document.documentElement.classList.add("embed"); sessionStorage.setItem("aidp_embed", "1"); }
+  else if (sessionStorage.getItem("aidp_embed") === "1") document.documentElement.classList.add("embed"); })();
+</script>
+<style>html.embed nav.top{display:none !important} html.embed .wrap{padding-top:8px !important}</style>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>个股研判 · AI 盯盘助手</title>
+<script src="/vendor/echarts.min.js"></script>
+<style>
+/* 布局：顶部输入台 → 结论条 → 五个编号章节（对应需求的四部分 + 扩展分析），研究报告式单列 */
+:root{
+  --bg:#f3f5f8; --panel:#ffffff; --ink:#122033; --ink2:#4a5a70; --line:#dde3ea; --soft:#eef2f6;
+  --accent:#1f5fae; --accent-soft:#e3ecf8;
+  --up:#d23f31; --down:#16875a;           /* 由脚本按市场惯例切换（A股/港股红涨绿跌，美股绿涨红跌） */
+  --buy:#16875a; --sell:#c4462d; --warn:#b7791f;
+  --f-body:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e141c; --panel:#151d28; --ink:#e4ebf3; --ink2:#9aabbf; --line:#263244; --soft:#1b2533;
+  --accent:#6ea8ff; --accent-soft:#1c2c45; --buy:#3fbf86; --sell:#f07a5f; --warn:#e0a84a; color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0e141c; --panel:#151d28; --ink:#e4ebf3; --ink2:#9aabbf; --line:#263244; --soft:#1b2533;
+  --accent:#6ea8ff; --accent-soft:#1c2c45; --buy:#3fbf86; --sell:#f07a5f; --warn:#e0a84a; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.65 var(--f-body)}
+.wrap{max-width:1240px;margin:0 auto;padding:20px max(16px,env(safe-area-inset-left)) 60px}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+h1{font-size:22px;font-weight:900;margin:0;letter-spacing:.02em}
+h2{font-size:19px;font-weight:700;margin:0;text-wrap:balance}
+h3{font-size:15px;font-weight:700;margin:0}
+.eyebrow{font-size:11px;letter-spacing:.14em;color:var(--ink2);text-transform:uppercase;font-family:var(--f-num)}
+.top{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.top .sub{color:var(--ink2);font-size:13px}
+form.desk{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;align-items:end}
+.fld{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fld label{font-size:12px;color:var(--ink2)}
+.fld input,.fld select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);min-width:0}
+.fld input:focus,.fld select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.fld.wide{grid-column:span 2}
+button.go{font:inherit;font-weight:700;padding:9px 14px;border:0;border-radius:6px;background:var(--accent);color:#fff;cursor:pointer}
+button.go:disabled{opacity:.6;cursor:wait}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0;font-size:12px;color:var(--ink2);align-items:center}
+.chip{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:99px;padding:3px 10px;cursor:pointer;font:inherit}
+.chip:hover{border-color:var(--accent)}
+.status{margin:14px 0;color:var(--ink2)}
+.status.err{color:var(--sell)}
+.verdict{margin-top:18px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;
+  display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr;gap:18px}
+.verdict>div{min-width:0}
+.big{font-size:30px;font-weight:600;line-height:1.1}
+.pill{display:inline-block;padding:2px 10px;border-radius:99px;font-weight:700;font-size:13px}
+.k{font-size:12px;color:var(--ink2)}
+.v{font-size:17px;font-weight:600}
+.zone-b{color:var(--buy)} .zone-s{color:var(--sell)}
+section{margin-top:28px}
+.sec-h{display:flex;align-items:baseline;gap:12px;border-bottom:2px solid var(--ink);padding-bottom:8px;margin-bottom:14px}
+.sec-h .no{font-family:var(--f-num);font-weight:600;color:var(--accent)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+.method{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:18px}
+.chart{width:100%;height:420px}
+.chart.sm{height:300px}
+ul.tight{margin:6px 0;padding-left:18px} ul.tight li{margin:2px 0}
+.pc{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.pc h4{margin:0 0 2px;font-size:12px}
+.pc .p h4{color:var(--buy)} .pc .c h4{color:var(--sell)}
+.zones{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.zbox{border-radius:8px;padding:8px 10px;background:var(--soft)}
+.zbox .v{font-size:15px}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--ink2);font-weight:500;font-size:12px}
+tr.me td{background:var(--accent-soft);font-weight:600}
+tr.bench td{color:var(--ink2)}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.stat{background:var(--soft);border-radius:8px;padding:10px 12px}
+.note{font-size:12px;color:var(--ink2)}
+.signal{font-weight:700}
+.warnbox{border-left:3px solid var(--warn);background:var(--soft);padding:8px 12px;border-radius:4px;margin:8px 0}
+.insights li{margin:6px 0}
+.pos{color:var(--up)} .neg{color:var(--down)}
+ol.news{margin:10px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:10px}
+ol.news a{color:var(--ink);text-decoration:none;font-weight:500}
+ol.news a:hover{color:var(--accent);text-decoration:underline}
+.tag{display:inline-block;font-size:11px;padding:0 6px;border-radius:4px;margin-right:6px;background:var(--soft);color:var(--ink2);border:1px solid var(--line)}
+.tag-pol{color:var(--accent);border-color:var(--accent)}
+.summary-card{border:1px solid var(--accent);background:var(--accent-soft)}
+.summary-card p{margin:0 0 8px;font-size:15px;line-height:1.85;max-width:62em}
+.nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.nav a{color:var(--ink2);text-decoration:none;padding:6px 12px;border-radius:6px;font-weight:500}
+.nav a.on{background:var(--accent);color:#fff}
+.nav a:hover:not(.on){background:var(--soft)}
+.userbar{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.ub-row{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
+.ub-label{font-size:12px;color:var(--ink2);padding-top:4px;min-width:56px}
+.ub-row .chips{margin:0;flex:1;min-width:0}
+.chip small{color:var(--ink2);margin-left:4px}
+.linkbtn{font:inherit;font-size:12px;border:0;background:none;color:var(--ink2);cursor:pointer;text-decoration:underline;padding:4px}
+.watch{display:flex;gap:8px;flex-wrap:wrap;flex:1;min-width:0}
+.wcard{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:4px 6px 4px 10px;font-size:13px}
+.wcard button.open{font:inherit;border:0;background:none;color:var(--ink);cursor:pointer;padding:0;text-align:left}
+.wcard button.open:hover b{color:var(--accent)}
+.wcard .x{border:0;background:none;color:var(--ink2);cursor:pointer;font-size:15px;line-height:1;padding:2px 4px}
+.starbtn{font:inherit;font-size:13px;font-weight:700;border:1px solid var(--accent);color:var(--accent);background:var(--panel);border-radius:6px;padding:3px 10px;cursor:pointer;margin-top:6px}
+.starbtn.on{background:var(--accent);color:#fff}
+.banner{border-left:3px solid var(--accent);background:var(--accent-soft);padding:8px 12px;border-radius:4px;margin-top:14px;font-size:13px}
+footer{margin-top:30px;font-size:12px;color:var(--ink2);border-top:1px solid var(--line);padding-top:12px}
+@media (max-width:900px){.verdict{grid-template-columns:1fr 1fr}.method,.grid2{grid-template-columns:1fr}.grid3{grid-template-columns:1fr 1fr}}
+@media (max-width:520px){.verdict{grid-template-columns:1fr}.grid3,.pc,.zones{grid-template-columns:1fr}.fld.wide{grid-column:auto}.chart{height:340px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+<link rel="stylesheet" href="/theme.css">
+</head>
+<body>
+<div class="wrap">
+  <nav class="top"><span class="brand">AI 盯盘助手</span><span class="seg"><a href="/dashboard.html">统计</a><a href="/review.html">每日复盘</a><a href="/monitor.html">AI 盯盘</a><a href="/screener.html">主力选股</a><a href="/" class="on">个股研判</a></span><span class="sp" style="flex:1"></span>
+    <select class="theme" id="theme-sel" title="界面颜色"><option value="dark">◐ 深色</option><option value="light">◑ 浅色</option><option value="system">◒ 跟随系统</option></select>
+    <button class="quit" id="quit-btn" title="关闭后台程序">退出程序</button></nav>
+  <script>
+  (function(){ const ts = document.getElementById("theme-sel"); ts.value = localStorage.getItem("aidp_theme") || "dark";
+    ts.onchange = () => { localStorage.setItem("aidp_theme", ts.value); document.documentElement.dataset.theme = ts.value; window.dispatchEvent(new Event("resize")); if (window.rerender) window.rerender(); };
+    document.getElementById("quit-btn").onclick = async () => { if (!confirm("退出后台程序？正在进行的盯盘和扫描会停止。")) return;
+      try { await fetch("/api/shutdown", {method: "POST"}); } catch (e) {}
+      document.body.innerHTML = '<div style="padding:80px;text-align:center">AI 盯盘助手 已退出，可以关闭这个窗口。</div>'; }; })();
+  </script>
+  <div class="top">
+    <h1>个股研判</h1>
+    <span class="sub">A股 · 港股 · 纳斯达克 · 道琼斯 · 纽交所 ｜ 技术面 × 同业 × 对冲 × 风险</span>
+  </div>
+
+  <form class="desk" id="f">
+    <div class="fld"><label for="code">股票代码</label><input id="code" value="600519" required placeholder="600519 / 0700 / AAPL"></div>
+    <div class="fld"><label for="market">市场</label>
+      <select id="market"><option>A股</option><option>港股</option><option>纳斯达克</option><option>道琼斯</option><option>纽交所</option></select></div>
+    <div class="fld"><label for="capital">可用资金</label><input id="capital" type="number" value="1000000" min="1000" step="1000"></div>
+    <div class="fld"><label for="risk">单笔风险 %</label><input id="risk" type="number" value="1" min="0.1" max="10" step="0.1"></div>
+    <div class="fld"><label for="maxpos">单票上限 %</label><input id="maxpos" type="number" value="20" min="1" max="100" step="1"></div>
+    <div class="fld"><label for="lot">每手股数</label><input id="lot" type="number" placeholder="自动" min="1"></div>
+    <div class="fld"><label for="asof">分析日期</label><input id="asof" type="date" title="留空 = 最新行情（含盘中实时）"></div>
+    <div class="fld wide"><label for="peers">同业代码（可选，逗号分隔）</label><input id="peers" placeholder="留空则用内置行业分组"></div>
+    <button class="go" id="go" type="submit">生成研判</button>
+  </form>
+  <div class="userbar">
+    <div class="ub-row" id="recent-row" hidden><span class="ub-label">研判记录</span><div class="chips" id="recent"></div>
+      <span class="note" style="white-space:nowrap">全部记录存在本地数据库，可在“统计”页按天查询、删除</span></div>
+    <div class="ub-row" id="watch-row"><span class="ub-label">★ 收藏</span><div class="watch" id="watch"><span class="note">还没有收藏。生成研判后点“☆ 收藏”。</span></div></div>
+  </div>
+  <div class="chips">示例：
+    <button class="chip" data-c="600519" data-m="A股">贵州茅台 600519</button>
+    <button class="chip" data-c="300750" data-m="A股">宁德时代 300750</button>
+    <button class="chip" data-c="0700" data-m="港股">腾讯 0700</button>
+    <button class="chip" data-c="NVDA" data-m="纳斯达克">NVDA</button>
+    <button class="chip" data-c="KO" data-m="道琼斯">KO</button>
+  </div>
+  <div class="status" id="status">正在载入…</div>
+  <div id="out" hidden></div>
+
+  <footer>
+    数据：Yahoo Finance 日K（复权），失败时回退东方财富；基准指数按市场自动选择。所有区间、股数与对冲测算均为基于历史价格的量化模型输出，
+    不构成投资建议，也不代表任何机构观点。历史回测不保证未来表现；期权价格为 Black-Scholes 理论估算，实际以券商报价为准。
+  </footer>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = (x, d=2) => x == null || isNaN(x) ? "—" : Number(x).toLocaleString("en-US", {minimumFractionDigits:d, maximumFractionDigits:d});
+const pct = (x, d=1) => x == null ? "—" : `<span class="${x>=0?'pos':'neg'}">${x>0?'+':''}${fmt(x,d)}%</span>`;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+let charts = [], last = null;
+
+function setConvention(market){
+  const us = !["A股","港股"].includes(market);
+  const red = "#d23f31", green = "#16875a";
+  document.documentElement.style.setProperty("--up", us ? green : red);
+  document.documentElement.style.setProperty("--down", us ? red : green);
+}
+
+document.querySelectorAll(".chips:not(#recent) .chip").forEach(b => b.onclick = () => {
+  $("#code").value = b.dataset.c; $("#market").value = b.dataset.m; $("#peers").value = ""; $("#lot").value = ""; $("#asof").value = ""; run();
+});
+$("#f").addEventListener("submit", e => { e.preventDefault(); run(); });
+$("#asof").max = new Date().toISOString().slice(0, 10);
+
+// ---- 最近查看 / 自选（保存在本机服务端 user_data.json）----
+let user = {recent: [], watchlist: []};
+const FIELDS = ["code","market","capital","risk","maxpos","lot","peers","asof"];
+function fill(it){ FIELDS.forEach(k => { if (it[k] !== undefined && $("#"+k)) $("#"+k).value = it[k]; }); }
+async function post(path, body){
+  try{ const r = await fetch(path, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)});
+    if (r.ok){ user = await r.json(); renderUser(); } }catch(e){}
+}
+// ---- 研判记录、收藏：存在本地数据库（统计页可按天查询、删除，收藏与选股/盯盘的收藏同一套）----
+let favs = [], hist = [];
+const bjDate = () => { const d = new Date(Date.now() + (new Date().getTimezoneOffset() + 480) * 60000), p = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };     // 北京日期
+async function loadFavs(){ try{ favs = (await (await fetch("/api/db/favorites")).json()).favorites.filter(f => f.source === "stock"); }catch(e){} }
+async function loadHist(){ try{ hist = (await (await fetch("/api/db/analyses?limit=30")).json()).analyses; }catch(e){} }
+function inFav(code, market){ return favs.find(f => f.code.toUpperCase() === String(code).toUpperCase() && f.market === market); }
+async function setFav(item, on){
+  try{ await fetch("/api/db/favorite", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({item, on: on ? 1 : 0})}); }catch(e){}
+  await loadFavs(); renderUser();
+}
+function favItem(code, market, name, price, date){ return {source:"stock", market, date: date || bjDate(), code, name, method:"个股研判", price}; }
+async function migrateWatch(){      // 旧版“自选”（user_data.json）一次性转入收藏
+  if (localStorage.getItem("aidp_watch_migrated") || !user.watchlist.length) return;
+  for (const w of user.watchlist) if (!inFav(w.code, w.market))
+    await fetch("/api/db/favorite", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({item: favItem(w.code, w.market, w.name, null, w.added), on: 1})});
+  localStorage.setItem("aidp_watch_migrated", "1"); await loadFavs();
+}
+function renderUser(){
+  $("#recent-row").hidden = !hist.length;
+  $("#recent").innerHTML = hist.map((r, i) => `<button class="chip" type="button" data-i="${i}" title="${esc(r.created)}：${esc(r.summary || "")}">${esc(r.created.slice(5, 16))} <b>${esc(r.name || r.code)}</b> <small>${esc(r.code)} · ${esc(r.rating || "")}</small></button>`).join("");
+  document.querySelectorAll("#recent .chip").forEach(b => b.onclick = () => { const r = hist[+b.dataset.i];
+    let p = {}; try{ p = JSON.parse(r.params || "{}"); }catch(e){}
+    fill({code: r.code, market: r.market, ...p}); run(); });
+  if (!favs.length){ $("#watch").innerHTML = `<span class="note">还没有收藏。生成研判后点“☆ 收藏”。</span>`; }
+  else{
+    $("#watch").innerHTML = favs.map((w, i) => `<span class="wcard" id="w-${i}"><button class="open" type="button" data-i="${i}"><b>${esc(w.name || w.code)}</b> <span class="note">${esc(w.code)}</span> <span class="num wq">…</span></button>
+      <button class="x" type="button" data-i="${i}" aria-label="取消收藏 ${esc(w.code)}">×</button></span>`).join("");
+    document.querySelectorAll(".wcard .open").forEach(b => b.onclick = () => { const w = favs[+b.dataset.i];
+      $("#code").value = w.code; $("#market").value = w.market; $("#peers").value = ""; $("#lot").value = ""; $("#asof").value = ""; run(); });
+    document.querySelectorAll(".wcard .x").forEach(b => b.onclick = () => { const w = favs[+b.dataset.i]; setFav(w, false); });
+    loadQuotes();
+  }
+  const sb = $("#star"); if (sb && last){ const on = !!inFav(last.meta.code, last.meta.market); sb.classList.toggle("on", on); sb.textContent = on ? "★ 已收藏" : "☆ 收藏"; }
+}
+async function loadQuotes(){
+  const items = favs.map(w => w.code + ":" + w.market).join(",");
+  try{ const q = await (await fetch("/api/quotes?items=" + encodeURIComponent(items))).json();
+    favs.forEach((w, i) => { const x = q[w.code + ":" + w.market], el = document.querySelector(`#w-${i} .wq`);
+      if (el) el.innerHTML = x ? `${fmt(x.price, 2)} ${x.chg == null ? "" : pct(x.chg, 2)}` : "—"; });
+  }catch(e){}
+}
+
+async function run(){
+  const q = new URLSearchParams({code:$("#code").value.trim(), market:$("#market").value, capital:$("#capital").value,
+    risk:$("#risk").value, maxpos:$("#maxpos").value, lot:$("#lot").value, peers:$("#peers").value, asof:$("#asof").value});
+  $("#go").disabled = true; $("#status").className = "status";
+  $("#status").textContent = `正在拉取 ${q.get("code")}（${q.get("market")}）${q.get("asof") ? "截至 " + q.get("asof") + " 的" : "最新"}行情、基准指数与同业数据，约 5–20 秒…`;
+  try{
+    const r = await fetch("/api/analyze?" + q); const d = await r.json();
+    if(!r.ok) throw new Error(d.error || r.statusText);
+    last = d; render(d);
+    const m = d.meta;
+    $("#status").textContent = m.as_of
+      ? `回看模式：按 ${m.last_date} 收盘的数据分析（之后的行情不参与计算），共 ${m.bars} 个交易日。`
+      : `数据截至 ${m.last_date}（最新K线：${m.latest_source || m.source}），历史日K来自 ${m.source}，共 ${m.bars} 个交易日。`;
+    history.replaceState(null, "", "?code=" + encodeURIComponent(m.code) + "&market=" + encodeURIComponent(m.market) + (m.as_of ? "&asof=" + m.as_of : ""));
+    post("/api/user/recent", {...Object.fromEntries(q), name: m.cn_name || m.name});
+    loadHist().then(renderUser);       // 后台已把这次研判存进数据库
+  }catch(err){
+    $("#status").className = "status err";
+    $("#status").textContent = "分析失败：" + err.message + "。请检查代码与市场是否匹配（港股如 0700，A股如 600519，美股如 AAPL）。";
+  }finally{ $("#go").disabled = false; }
+}
+
+function zoneBox(label, z, cls){
+  return `<div class="zbox"><div class="k">${label}</div><div class="v num ${cls}">${fmt(z[0])} – ${fmt(z[1])}</div></div>`;
+}
+function btTable(b, rule){
+  return `<div class="k" style="margin-top:10px">历史回测（${b.years} 年）：${esc(rule)}</div>
+  <div class="tbl-wrap"><table class="num"><tr><th>交易次数</th><th>胜率</th><th>策略收益</th><th>买入持有</th><th>策略回撤</th><th>盈亏比</th></tr>
+  <tr><td>${b.trades}</td><td>${fmt(b.win_rate,1)}%</td><td>${pct(b.total_return)}</td><td>${pct(b.buy_hold)}</td><td>${fmt(b.max_dd,1)}%</td><td>${fmt(b.payoff,2)}</td></tr></table></div>`;
+}
+
+function render(d){
+  setConvention(d.meta.market);
+  charts.forEach(c => c.dispose()); charts = [];
+  const m = d.meta, c = d.composite, s = d.sizing, ccy = m.currency;
+  const ratingColor = c.score >= 15 ? "var(--buy)" : c.score <= -15 ? "var(--sell)" : "var(--warn)";
+  const methodsHtml = d.methods.map((mt, i) => `
+    <div class="card"><div class="method">
+      <div style="min-width:0"><h3>2.${i+1} ${esc(mt.title)}</h3><div class="chart ${i? 'sm':''}" id="ch-${mt.key}"></div></div>
+      <div style="min-width:0">
+        <div class="k">当前读数</div><ul class="tight">${mt.reading.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
+        <div>信号：<span class="signal">${esc(mt.signal)}</span></div>
+        <div class="zones">${zoneBox("买入区间", mt.buy_zone, "zone-b")}${zoneBox("卖出区间", mt.sell_zone, "zone-s")}</div>
+        <div class="pc"><div class="p"><h4>优势</h4><ul class="tight">${mt.pros.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>
+          <div class="c"><h4>劣势</h4><ul class="tight">${mt.cons.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div></div>
+        ${btTable(mt.backtest, mt.rule)}
+      </div></div></div>`).join("");
+
+  const tr = s.tranches.map((t,i)=>`<tr><td>第${i+1}笔（${["试探","主力","加码"][i]}）</td><td>${fmt(t.price)}</td><td>${t.shares.toLocaleString()}</td><td>${fmt(t.price*t.shares,0)}</td></tr>`).join("");
+  const P = d.peers, all = [P.target, ...P.list, P.bench];
+  const peerRows = all.map(p => `<tr class="${p.is_target?'me':p.is_bench?'bench':''}">
+      <td>${esc(p.code)} <span class="note">${esc(p.name)}</span></td><td>${fmt(p.price)}</td>
+      <td>${pct(p.r1m)}</td><td>${pct(p.r3m)}</td><td>${pct(p.r6m)}</td><td>${pct(p.r1y)}</td>
+      <td>${fmt(p.vol,1)}%</td><td>${fmt(p.mdd,1)}%</td><td>${fmt(p.sharpe)}</td><td>${fmt(p.beta)}</td>
+      <td>${p.is_target||p.is_bench ? "—" : fmt(p.corr_target)}</td><td>${fmt(p.off_high,1)}%</td><td>${fmt(p.rsi,1)}</td>
+      <td>${p.above_ma60 ? "上方" : "下方"}</td></tr>`).join("");
+  const H = d.hedge, R = d.risk;
+
+  $("#out").innerHTML = `
+  ${m.as_of ? `<div class="banner">回看模式：所有指标、区间、股数按 <b>${esc(m.last_date)}</b> 收盘计算，可与之后的真实走势对照验证。新闻板块显示的是当前最新新闻，不是当时的新闻。</div>` : ""}
+  ${m.anomalies.length ? `<div class="warnbox" style="margin-top:16px">数据质量提示：近 60 日出现单日涨跌超 20% 的交易日（${esc(m.anomalies.join("，"))}）。
+    可能是真实行情、拆股/除权未调整或数据源错误，请先与券商行情核对，再参考下方区间与股数。</div>` : ""}
+  <div class="verdict">
+    <div><div class="eyebrow">${esc(m.exchange || m.market)} · ${esc(m.symbol)}</div>
+      <h2>${esc(m.cn_name && m.cn_name !== m.name ? m.cn_name + " · " + m.name : m.name)}</h2>
+      <div class="big num">${fmt(m.price, 2)} <span style="font-size:16px">${pct(m.chg,2)}</span></div>
+      <div class="note">${esc(ccy)} ｜ 截至 ${esc(m.last_date)} ｜ 基准 ${esc(m.bench)}</div>
+      <button class="starbtn" id="star" type="button">☆ 收藏</button></div>
+    <div><div class="k">综合评级（-100 ~ 100）</div>
+      <div><span class="pill" style="background:${ratingColor};color:#fff">${esc(c.rating)}</span> <span class="v num">${c.score}</span></div>
+      <div class="note" style="margin-top:6px">${esc(c.tilt_note)}</div></div>
+    <div><div class="k">综合买入区间</div><div class="v num zone-b">${fmt(c.buy_zone[0])} – ${fmt(c.buy_zone[1])}</div>
+      <div class="k" style="margin-top:6px">综合卖出区间</div><div class="v num zone-s">${fmt(c.sell_zone[0])} – ${fmt(c.sell_zone[1])}</div>
+      <div class="k" style="margin-top:6px">止损</div><div class="v num">${fmt(c.stop)}</div></div>
+    <div><div class="k">建议买入股数</div><div class="big num">${s.shares.toLocaleString()}</div>
+      <div class="note">≈ ${fmt(s.position_value,0)} ${esc(ccy)}，占资金 ${fmt(s.position_pct,1)}%<br>止损最大亏损 ${fmt(s.max_loss,0)}；约束：${esc(s.binding)}</div></div>
+  </div>
+
+  <section><div class="sec-h"><span class="no">01</span><h2>输入</h2></div>
+    <div class="note">代码 <b class="num">${esc(m.code)}</b>，市场 <b>${esc(m.market)}</b>，资金 <b class="num">${fmt(s.capital,0)}</b>，单笔风险 ${s.risk_pct}%，单票上限 ${s.max_pos_pct}%，每手 ${s.lot} 股。
+    颜色按市场惯例：${["A股","港股"].includes(m.market) ? "红涨绿跌" : "绿涨红跌"}。</div>
+  </section>
+
+  <section><div class="sec-h"><span class="no">02</span><h2>三种技术分析与买卖区间</h2></div>
+    ${methodsHtml}
+    <div class="card"><h3>2.4 综合区间与建仓方案</h3>
+      <div class="grid2" style="margin-top:10px">
+        <div><ul class="tight">
+          <li>综合买入区：三法买入区均值，经行业相对强弱调整 → <b class="num zone-b">${fmt(c.buy_zone[0])} – ${fmt(c.buy_zone[1])}</b></li>
+          <li>综合卖出区：<b class="num zone-s">${fmt(c.sell_zone[0])} – ${fmt(c.sell_zone[1])}</b>，分两批各卖 50%</li>
+          <li>计划均价 <span class="num">${fmt(s.entry)}</span>，止损 <span class="num">${fmt(s.stop)}</span>（买入区下沿 − 1×ATR），目标 <span class="num">${fmt(s.target)}</span>，风险回报比 <b class="num">${fmt(s.rr)}</b></li>
+          <li>股数 = min(资金×单笔风险 ÷ 每股风险, 资金×单票上限 ÷ 价格, 日均成交额×1% ÷ 价格)，按每手 ${s.lot} 股取整</li>
+          <li>回测半凯利仓位参考：${s.half_kelly==null?"—":fmt(s.half_kelly,1)+"%"}（凯利≤0 说明该规则历史期望为负，不宜加大仓位）</li>
+        </ul>
+        ${s.warning ? `<div class="warnbox">${esc(s.warning)}</div>` : ""}
+        ${s.lot_note ? `<div class="warnbox">${esc(s.lot_note)}</div>` : ""}</div>
+        <div class="tbl-wrap"><table class="num"><tr><th>分批买入</th><th>价格</th><th>股数</th><th>金额</th></tr>${tr}
+          <tr><td>合计</td><td>${fmt(s.entry)}</td><td>${s.shares.toLocaleString()}</td><td>${fmt(s.position_value,0)}</td></tr></table>
+          <table class="num" style="margin-top:10px"><tr><th>分批卖出</th><th>价格</th><th>比例</th><th>股数</th></tr>
+          ${s.sell_plan.map((x,i)=>`<tr><td>止盈${i+1}</td><td>${fmt(x.price)}</td><td>${x.pct}%</td><td>${(i? s.shares - Math.floor(s.shares/2/s.lot)*s.lot : Math.floor(s.shares/2/s.lot)*s.lot).toLocaleString()}</td></tr>`).join("")}</table></div>
+      </div></div>
+  </section>
+
+  <section><div class="sec-h"><span class="no">03</span><h2>同质化公司对比</h2></div>
+    <div class="card"><div class="tbl-wrap"><table class="num">
+      <tr><th>代码 / 名称</th><th>价格</th><th>1月</th><th>3月</th><th>6月</th><th>1年</th><th>年化波动</th><th>1年回撤</th><th>夏普</th><th>Beta</th><th>与目标相关</th><th>距52周高</th><th>RSI</th><th>MA60</th></tr>
+      ${peerRows}</table></div>
+      ${P.list.length ? "" : `<div class="warnbox">内置行业分组未覆盖该股票，请在「同业代码」中填写可比公司后重新生成。</div>`}
+      ${m.peer_errors.length ? `<div class="note">未取到：${esc(m.peer_errors.join("；"))}</div>` : ""}
+      <div class="grid2" style="margin-top:12px"><div class="chart sm" id="ch-peer"></div>
+        <div><h3>对比结论</h3><ul class="tight">
+          <li>近3月相对同业中位数：${pct(c.rel3m)}；近1年：${pct(c.rel1y)}</li>
+          <li>同业中位数：1年收益 ${pct(P.median.r1y)}，年化波动 ${fmt(P.median.vol,1)}%，夏普 ${fmt(P.median.sharpe)}</li>
+          <li>目标风险调整后收益（夏普 ${fmt(P.target.sharpe)}）${P.target.sharpe > (P.median.sharpe ?? 0) ? "优于" : "弱于"}同业中位数</li>
+          <li>右上方 = 高收益高波动；同一收益下越靠左越优（单位风险收益更高）</li>
+        </ul><div class="note">说明：免费数据源不含 PE/PB/ROE，本节以价格与风险指标对比。估值对比请结合财报。</div></div></div>
+    </div>
+  </section>
+
+  <section><div class="sec-h"><span class="no">04</span><h2>对冲建议</h2></div>
+    <div class="card"><div class="grid3">
+      <div class="stat"><div class="k">对 ${esc(H.bench)} 的 Beta</div><div class="v num">${fmt(H.beta)}</div><div class="note">相关系数 ${fmt(H.corr)}，R² ${H.r2}%</div></div>
+      <div class="stat"><div class="k">持仓市值（按建议股数）</div><div class="v num">${fmt(H.position_value,0)}</div><div class="note">β 中性需对冲名义 ${fmt(H.hedge_notional,0)}</div></div>
+      <div class="stat"><div class="k">60日历史波动率</div><div class="v num">${fmt(H.vol60,1)}%</div><div class="note">期权估价使用，r=${(H.rf*100).toFixed(1)}%，T=${H.T_months}个月</div></div>
+    </div>
+    <div class="grid2" style="margin-top:12px"><div>
+      <h3>方案 A · 指数 Beta 对冲（剥离系统性风险）</h3>
+      <ul class="tight">${H.instruments.map(x=>`<li>${esc(x)}</li>`).join("")}
+        <li>空头名义 ≈ 持仓市值 × β = <b class="num">${fmt(H.hedge_notional,0)}</b>，按合约乘数折算张数</li>
+        ${(H.r2 < 30) ? `<li class="zone-s">R² 仅 ${H.r2}%：个股走势主要由自身因素驱动，指数对冲效果有限，优先用方案 B/C</li>` : ""}</ul>
+      <h3 style="margin-top:10px">方案 B · 保护性认沽（Protective Put）</h3>
+      <ul class="tight"><li>行权价 ${fmt(H.put.strike)}（现价 92%），3个月理论权利金 ${fmt(H.put.premium,3)} / 股，约 ${fmt(H.put.cost_pct)}% ，总成本 ≈ ${fmt(H.put.cost,0)}</li>
+        <li>到期最大亏损锁定在约 ${fmt(H.put.floor_loss_pct,1)}%（含权利金）</li></ul>
+    </div><div>
+      <h3>方案 C · 零成本领口（Collar）</h3>
+      <ul class="tight"><li>买入 ${fmt(H.collar.put_strike)} 认沽 + 卖出 ${fmt(H.collar.call_strike)} 认购（现价 110%）</li>
+        <li>每股净权利金 ${fmt(H.collar.net,3)}，总计 ${fmt(H.collar.net_cost,0)}（负值为净收入）；代价是放弃 110% 以上的上涨</li></ul>
+      <h3 style="margin-top:10px">方案 D · 同业配对（行业中性）</h3>
+      ${H.pair ? `<ul class="tight"><li>做空 / 融券相关性最高的 <b>${esc(H.pair.code)}</b> ${esc(H.pair.name)}（相关 ${fmt(H.pair.corr)}）</li>
+        <li>对冲比率 ${fmt(H.pair.hedge_ratio)}，名义 ≈ ${fmt(H.pair.notional,0)}，保留个股 Alpha、对冲行业 Beta</li></ul>`
+        : `<div class="note">同业相关性均低于 0.5，不建议配对对冲。</div>`}
+      <div class="note" style="margin-top:8px">A股个人投资者期权/融券有门槛，港美股期权需开通相应权限；Collar 适合已有底仓、愿意让渡上行空间换取保护的情形。</div>
+    </div></div></div>
+  </section>
+
+  <section><div class="sec-h"><span class="no">05</span><h2>扩展专业分析（需求之外补充）</h2></div>
+    <div class="grid3">
+      <div class="stat"><div class="k">VaR 95%（1日 / 10日）</div><div class="v num">${fmt(R.var95_1d)}% / ${fmt(R.var95_10d)}%</div><div class="note">持仓 1 日 95% VaR ≈ ${fmt(R.var_amount,0)}；CVaR ${fmt(R.cvar95_1d)}%</div></div>
+      <div class="stat"><div class="k">夏普 / 索提诺（1年）</div><div class="v num">${fmt(R.sharpe)} / ${fmt(R.sortino)}</div><div class="note">年化波动 ${fmt(R.ann_vol,1)}%</div></div>
+      <div class="stat"><div class="k">最大回撤 1年 / 5年</div><div class="v num">${fmt(R.mdd_1y,1)}% / ${fmt(R.mdd_5y,1)}%</div><div class="note">ATR(14) ${fmt(R.atr,3)}（${fmt(R.atr_pct)}%/日）</div></div>
+      <div class="stat"><div class="k">52周价格位置</div><div class="v num">${R.pct_range_52w}%</div><div class="note">0% = 一年最低，100% = 一年最高</div></div>
+      <div class="stat"><div class="k">量能</div><div class="v num">${fmt(R.vol_ratio)}×</div><div class="note">5日/60日均量；OBV 20日${esc(R.obv_trend)}</div></div>
+      <div class="stat"><div class="k">流动性（20日均成交额）</div><div class="v num">${fmt(R.adv20,0)}</div><div class="note">建议单笔不超过其 1%，避免冲击成本</div></div>
+    </div>
+    <div class="grid2" style="margin-top:16px">
+      <div class="card"><h3>蒙特卡洛 60 日价格分布（2000 条路径）</h3><div class="chart sm" id="ch-mc"></div>
+        <div class="note">上涨概率 ${R.mc.prob_up}%；涨超 10% 概率 ${R.mc.prob_up10}%；跌超 10% 概率 ${R.mc.prob_dn10}%。几何布朗运动，漂移收缩 50%。</div></div>
+      <div class="card"><h3>月度季节性（5年平均收益）</h3><div class="chart sm" id="ch-season"></div>
+        <div class="note">样本仅约 5 个/月，统计意义有限，作为择时参考。</div></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><h3>斐波那契回撤（250日 高 ${fmt(R.fib_high)} / 低 ${fmt(R.fib_low)}）</h3>
+        <div class="tbl-wrap"><table class="num"><tr><th>回撤位</th><th>价格</th><th>与现价</th></tr>
+        ${R.fib.map(f=>`<tr><td>${(f.level*100).toFixed(1)}%</td><td>${fmt(f.price)}</td><td>${pct((f.price/m.price-1)*100)}</td></tr>`).join("")}</table></div></div>
+      <div class="card"><h3>分析师要点</h3><ul class="tight insights">${insights(d).map(x=>`<li>${x}</li>`).join("")}</ul></div>
+    </div>
+  </section>
+
+  <section><div class="sec-h"><span class="no">06</span><h2>公司与行业政策新闻</h2></div>
+    <div class="grid2">
+      <div class="card"><h3>公司新闻 · ${esc(d.news.query_name)}</h3><div class="note">近 30 天，按时间排序，最多 3 条</div>
+        ${newsList(d.news.company, "近 30 天未检索到相关公司新闻。")}</div>
+      <div class="card"><h3>行业政策 · ${esc(d.news.industry)}</h3><div class="note">近 60 天，优先政策/监管类，最多 3 条</div>
+        ${newsList(d.news.policy, "近 60 天未检索到相关行业政策新闻。")}</div>
+    </div>
+    ${d.news.errors.length ? `<div class="note">新闻获取失败：${esc(d.news.errors.join("；"))}</div>` : ""}
+    <div class="note">来源：Google 新闻聚合，仅展示标题与链接，点击跳转原文。新闻按关键词检索，未做情绪判断，请阅读原文自行判断影响。</div>
+  </section>
+
+  <section class="summary"><div class="sec-h"><span class="no">07</span><h2>分析总结与建议</h2></div>
+    <div class="card summary-card"><p>${esc(d.summary.text)}</p>
+      <div class="note num">${d.summary.chars} / 200 字 ｜ 由模型规则自动生成，不构成投资建议</div></div>
+  </section>`;
+  $("#out").hidden = false;
+  drawCharts(d);
+  $("#star").onclick = () => { const f = inFav(m.code, m.market);
+    setFav(f || favItem(m.code, m.market, m.cn_name || m.name, m.price), !f); };
+  renderUser();
+}
+
+function newsList(items, empty){
+  if(!items.length) return `<div class="note" style="margin-top:10px">${empty}</div>`;
+  return `<ol class="news">${items.map(n => `<li>
+    <a href="${n.link && n.link.startsWith("https://") ? esc(n.link) : "#"}" target="_blank" rel="noopener noreferrer">${esc(n.title)}</a>
+    <div class="note">${n.kind ? `<span class="tag ${n.kind==="政策"?"tag-pol":""}">${esc(n.kind)}</span>` : ""}${esc(n.source)} · <span class="num">${esc(n.date)}</span></div></li>`).join("")}</ol>`;
+}
+
+function insights(d){
+  const out = [], R = d.risk, c = d.composite, H = d.hedge, mt = d.methods;
+  const best = [...mt].sort((a,b)=>(b.backtest.total_return-b.backtest.buy_hold)-(a.backtest.total_return-a.backtest.buy_hold))[0];
+  out.push(`历史上对该股最有效的规则是「${esc(best.rule)}」：收益 ${fmt(best.backtest.total_return,1)}% vs 买入持有 ${fmt(best.backtest.buy_hold,1)}%。${best.backtest.total_return < best.backtest.buy_hold ? "三种规则均跑输买入持有，说明该股更适合趋势持有而非频繁择时。" : ""}`);
+  if (d.sizing.rr != null) out.push(`计划风险回报比 ${fmt(d.sizing.rr)}，${d.sizing.rr >= 2 ? "满足 ≥2 的专业入场门槛" : "低于 2，建议等待更低价位或放弃"}。`);
+  if (R.pct_range_52w != null) out.push(R.pct_range_52w > 85 ? "股价处于 52 周区间高位，追高需控制仓位并收紧止损。" : R.pct_range_52w < 15 ? "股价处于 52 周区间低位，需区分“便宜”与“价值陷阱”，等待右侧确认。" : `股价处于 52 周区间 ${R.pct_range_52w}% 位置。`);
+  if (H.r2 != null) out.push(`R² ${H.r2}%：${H.r2 > 50 ? "大盘主导走势，宏观/指数风险是首要风险。" : "个股特质风险为主，关注公司自身事件（财报、监管、产品）。"}`);
+  const bw = mt[1].reading[1] || ""; if (bw.includes("收口")) out.push("布林带宽处于近一年低位，波动率压缩后常伴随方向性突破，可用领口或跨式策略应对。");
+  if (R.vol_ratio > 1.5) out.push("近 5 日成交量显著放大，结合价格方向判断是否为主力资金进出。");
+  out.push("事件风险：财报、分红除权、指数调整与宏观数据发布前后波动放大，建议在事件前降低杠杆。");
+  return out;
+}
+
+function axisStyle(){ return {axisLine:{lineStyle:{color:css("--line")}}, axisLabel:{color:css("--ink2"), fontFamily:"IBM Plex Mono"}, splitLine:{lineStyle:{color:css("--soft")}}}; }
+function mk(id){ const el = document.getElementById(id); if(!el) return null; const c = echarts.init(el); charts.push(c); return c; }
+
+function drawCharts(d){
+  const up = css("--up"), dn = css("--down"), ink2 = css("--ink2");
+  const dates = d.ohlc.map(r=>r[0]), n = dates.length, start = Math.max(0, (1 - d.meta.view / n) * 100);
+  const kdata = d.ohlc.map(r=>[r[1],r[2],r[3],r[4]]);
+  const vol = d.ohlc.map(r=>({value:r[5], itemStyle:{color: r[2]>=r[1]? up: dn, opacity:.55}}));
+  const base = {animation:false, textStyle:{fontFamily:"Noto Sans SC"}, tooltip:{trigger:"axis", axisPointer:{type:"cross"}},
+    legend:{top:0, textStyle:{color:ink2}}};
+  const zoom = idx => [{type:"inside", xAxisIndex:idx, start, end:100, zoomOnMouseWheel:"shift", moveOnMouseWheel:false}, {type:"slider", xAxisIndex:idx, start, end:100, height:16, bottom:4}];
+  const c = d.composite, L = d.methods[0].levels;
+  const zoneArea = {silent:true, data:[
+    [{yAxis:c.buy_zone[0], itemStyle:{color:css("--buy"), opacity:.12}, label:{show:true, position:"insideLeft", formatter:"综合买入区", color:css("--buy")}}, {yAxis:c.buy_zone[1]}],
+    [{yAxis:c.sell_zone[0], itemStyle:{color:css("--sell"), opacity:.12}, label:{show:true, position:"insideLeft", formatter:"综合卖出区", color:css("--sell")}}, {yAxis:c.sell_zone[1]}]]};
+  const lines = (arr) => ({silent:true, symbol:"none", data: arr.map(([v,name,col])=>({yAxis:v, name, lineStyle:{color:col, type:"dashed"}, label:{formatter:`${name} ${fmt(v)}`, color:col, position:"insideEndTop"}}))});
+
+  // K线
+  const S0 = d.methods[0].series, ch1 = mk("ch-kline");
+  ch1.setOption({...base, grid:[{left:56,right:16,top:30,height:"60%"},{left:56,right:16,top:"76%",height:"12%"}],
+    xAxis:[{type:"category",data:dates,...axisStyle()},{type:"category",gridIndex:1,data:dates,axisLabel:{show:false}}],
+    yAxis:[{scale:true,...axisStyle()},{gridIndex:1,scale:true,axisLabel:{show:false},splitLine:{show:false}}],
+    dataZoom: zoom([0,1]),
+    series:[{name:"K线",type:"candlestick",data:kdata,itemStyle:{color:up,color0:dn,borderColor:up,borderColor0:dn},
+        markArea:zoneArea, markLine:lines([[L.s1,"支撑1",css("--buy")],[L.r1,"阻力1",css("--sell")],[c.stop,"止损",css("--warn")]])},
+      ...[["MA5","ma5","#8a6dc9"],["MA20","ma20","#e0a32e"],["MA60","ma60","#2f7fd6"],["MA120","ma120","#888"]].map(([nm,k,col])=>({name:nm,type:"line",data:S0[k],showSymbol:false,lineStyle:{width:1.2,color:col},itemStyle:{color:col}})),
+      {name:"成交量",type:"bar",xAxisIndex:1,yAxisIndex:1,data:vol}]});
+
+  // 布林
+  const B = d.methods[1].series, closes = d.ohlc.map(r=>r[2]), ch2 = mk("ch-boll");
+  ch2.setOption({...base, grid:[{left:56,right:16,top:30,height:"58%"},{left:56,right:16,top:"76%",height:"12%"}],
+    xAxis:[{type:"category",data:dates,...axisStyle()},{type:"category",gridIndex:1,data:dates,axisLabel:{show:false}}],
+    yAxis:[{scale:true,...axisStyle()},{gridIndex:1,min:-0.2,max:1.2,...axisStyle(),axisLabel:{show:false}}],
+    dataZoom: zoom([0,1]),
+    series:[{name:"收盘",type:"line",data:closes,showSymbol:false,lineStyle:{width:1.4,color:css("--ink")},itemStyle:{color:css("--ink")}},
+      {name:"上轨",type:"line",data:B.upper,showSymbol:false,lineStyle:{width:1,color:css("--sell")},itemStyle:{color:css("--sell")}},
+      {name:"中轨",type:"line",data:B.mid,showSymbol:false,lineStyle:{width:1,type:"dashed",color:ink2},itemStyle:{color:ink2}},
+      {name:"下轨",type:"line",data:B.lower,showSymbol:false,lineStyle:{width:1,color:css("--buy")},itemStyle:{color:css("--buy")}},
+      {name:"%B",type:"line",xAxisIndex:1,yAxisIndex:1,data:B.pctb,showSymbol:false,lineStyle:{width:1,color:css("--accent")},itemStyle:{color:css("--accent")},
+        markLine:{silent:true,symbol:"none",data:[{yAxis:0},{yAxis:1}],lineStyle:{color:ink2,type:"dotted"},label:{show:false}}}]});
+
+  // MACD + RSI
+  const M = d.methods[2].series, ch3 = mk("ch-macd");
+  ch3.setOption({...base, grid:[{left:56,right:16,top:30,height:"40%"},{left:56,right:16,top:"62%",height:"24%"}],
+    xAxis:[{type:"category",data:dates,...axisStyle()},{type:"category",gridIndex:1,data:dates,...axisStyle()}],
+    yAxis:[{scale:true,...axisStyle()},{gridIndex:1,min:0,max:100,...axisStyle()}],
+    dataZoom: zoom([0,1]),
+    series:[{name:"MACD柱",type:"bar",data:M.hist.map(v=>({value:v,itemStyle:{color:v>=0?up:dn}}))},
+      {name:"DIF",type:"line",data:M.dif,showSymbol:false,lineStyle:{width:1.2,color:"#e0a32e"},itemStyle:{color:"#e0a32e"}},
+      {name:"DEA",type:"line",data:M.dea,showSymbol:false,lineStyle:{width:1.2,color:"#2f7fd6"},itemStyle:{color:"#2f7fd6"}},
+      {name:"RSI14",type:"line",xAxisIndex:1,yAxisIndex:1,data:M.rsi,showSymbol:false,lineStyle:{width:1.2,color:"#8a6dc9"},itemStyle:{color:"#8a6dc9"},
+        markArea:{silent:true,data:[[{yAxis:70,itemStyle:{color:css("--sell"),opacity:.08}},{yAxis:100}],[{yAxis:0,itemStyle:{color:css("--buy"),opacity:.08}},{yAxis:30}]]}}]});
+
+  // 同业散点：波动 vs 1年收益
+  const P = d.peers, pts = [P.target, ...P.list, P.bench].filter(p=>p.r1y!=null);
+  mk("ch-peer").setOption({animation:false, grid:{left:52,right:20,top:24,bottom:40},
+    tooltip:{formatter:p=>`${esc(p.data[2])}<br>波动 ${fmt(p.data[0],1)}% ｜ 1年 ${fmt(p.data[1],1)}%`},
+    xAxis:{name:"年化波动 %",nameLocation:"middle",nameGap:24,scale:true,...axisStyle(),nameTextStyle:{color:ink2}},
+    yAxis:{name:"1年收益 %",scale:true,...axisStyle(),nameTextStyle:{color:ink2}},
+    series:[{type:"scatter",symbolSize:p=>14,data:pts.map(p=>({value:[p.vol,p.r1y,p.code], itemStyle:{color:p.is_target?css("--accent"):p.is_bench?ink2:css("--warn")}})),
+      label:{show:true,position:"top",formatter:p=>p.data.value[2],color:ink2,fontSize:11}}]});
+
+  // 蒙特卡洛
+  const mc = d.risk.mc.bands, x = mc["0.5"].map((_,i)=>`T+${i+1}`);
+  const band = (lo,hi,op,name) => [{name,type:"line",data:mc[lo],stack:name,lineStyle:{opacity:0},showSymbol:false,areaStyle:{opacity:0}},
+    {name,type:"line",data:mc[hi].map((v,i)=>v-mc[lo][i]),stack:name,lineStyle:{opacity:0},showSymbol:false,areaStyle:{color:css("--accent"),opacity:op},tooltip:{show:false}}];
+  mk("ch-mc").setOption({animation:false, grid:{left:56,right:16,top:20,bottom:28}, tooltip:{trigger:"axis",formatter:ps=>{const i=ps[0].dataIndex;return `${x[i]}<br>95%: ${fmt(mc["0.95"][i])}<br>75%: ${fmt(mc["0.75"][i])}<br>中位: ${fmt(mc["0.5"][i])}<br>25%: ${fmt(mc["0.25"][i])}<br>5%: ${fmt(mc["0.05"][i])}`}},
+    xAxis:{type:"category",data:x,...axisStyle(),axisLabel:{color:ink2,interval:9}}, yAxis:{scale:true,...axisStyle()},
+    series:[...band("0.05","0.95",.15,"5–95%"), ...band("0.25","0.75",.25,"25–75%"),
+      {name:"中位数",type:"line",data:mc["0.5"],showSymbol:false,lineStyle:{color:css("--accent"),width:2}}]});
+
+  // 季节性
+  const se = d.risk.season;
+  mk("ch-season").setOption({animation:false, grid:{left:44,right:12,top:20,bottom:28}, tooltip:{formatter:p=>`${p.name}<br>平均 ${fmt(p.value)}%<br>上涨概率 ${se[p.dataIndex].win}%（n=${se[p.dataIndex].n}）`},
+    xAxis:{type:"category",data:se.map(s=>s.month+"月"),...axisStyle()}, yAxis:{...axisStyle(),axisLabel:{color:ink2,formatter:"{value}%"}},
+    series:[{type:"bar",data:se.map(s=>({value:s.avg,itemStyle:{color:s.avg>=0?up:dn}}))}]});
+}
+window.addEventListener("resize", () => charts.forEach(c=>c.resize()));
+window.rerender = () => last && render(last);      // 切换界面颜色后按新配色重画图表
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => last && render(last));
+(async function init(){
+  try{ user = await (await fetch("/api/user")).json(); }catch(e){}
+  await loadFavs(); await migrateWatch(); await loadHist();
+  const p = new URLSearchParams(location.search);
+  // 带代码打开（如从主力选股跳过来）才自动研判；直接打开只填好上一次的股票，避免每次打开都多一条研判记录
+  const auto = !!p.get("code");
+  if (auto){ $("#code").value = p.get("code"); $("#market").value = p.get("market") || "A股"; $("#asof").value = p.get("asof") || ""; }
+  else if (hist.length){ let q = {}; try{ q = JSON.parse(hist[0].params || "{}"); }catch(e){} fill({code: hist[0].code, market: hist[0].market, ...q}); }
+  else if (user.recent.length){ fill(user.recent[0]); }
+  renderUser();
+  if (auto) run(); else $("#status").textContent = "输入代码后点“生成研判”（约 5–20 秒）。每次研判都会存入本地数据库的“研判记录”。";
+  setInterval(() => { if (favs.length && !document.hidden) loadQuotes(); }, 60000);
+})();
+</script>
+</body>
+</html>

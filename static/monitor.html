@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<script>document.documentElement.dataset.theme=localStorage.getItem("aidp_theme")||"dark"</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 盯盘 · AI 盯盘助手</title>
+<link rel="stylesheet" href="/common.css">
+<style>
+/* 与 Mac App 的“AI 盯盘助手”指挥台同一布局：控制条 → 头部 → 左：6 张策略卡 / 中：信号流 + 纪律拆分 + 运行日志 + 战绩 / 右：命中榜 + 监控流水 */
+.wrap{padding:10px 16px 12px !important}
+.ctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:-4px 0 10px}
+.sg{display:inline-flex;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:2px}
+.sg button{border:0;background:none;color:var(--ink);padding:3px 14px;border-radius:5px;font-size:12.5px}
+.sg button.on{background:var(--accent);color:#fff}
+.ctl select{font-size:12.5px;padding:3px 6px}
+.ctl select:disabled{color:var(--warn) !important;opacity:1}
+.ctl .sp{flex:1}
+.gbtn{border:0;border-radius:7px;padding:5px 14px;font-weight:700;color:#06110c;background:#3CC48A}
+.gbtn.stop{background:#F0605A;color:#fff}
+.gbtn:disabled{opacity:.45}
+.hbtn{border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:7px;padding:4px 12px;font-size:12.5px}
+.hbtn:disabled{opacity:.4}
+.head{display:flex;align-items:center;gap:18px;padding:14px 18px}
+.ico{width:60px;height:60px;border-radius:14px;display:grid;place-items:center;font:700 26px var(--f-num);color:var(--good);border:1.5px solid rgba(60,196,138,.85);background:rgba(60,196,138,.06);flex:none}
+.head h1{margin:0;font-size:24px;font-weight:600;display:flex;align-items:center;gap:10px}
+.gpill{font-size:11.5px;font-weight:600;color:var(--good);border:1px solid rgba(60,196,138,.7);background:rgba(60,196,138,.08);border-radius:5px;padding:1px 8px}
+.st{display:flex;align-items:center;gap:6px;font-size:13px;margin-top:3px}
+.st i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.newhit{flex:1;display:flex;justify-content:center}
+.newhit .b{display:flex;align-items:center;gap:12px;border:2px solid var(--gold);border-radius:14px;padding:8px 18px;background:rgba(245,196,81,.07);min-width:360px}
+.newhit .b .s{font-size:24px;color:var(--gold)}
+.bignum{text-align:right}
+.bignum b{font:700 44px var(--f-num);display:block;line-height:1}
+.bignum small{font-size:11px;color:var(--ink2)}
+.kvs{width:210px;font-size:12px;border-left:1px solid var(--line);padding-left:16px}
+.kvs div{display:flex;justify-content:space-between;padding:1px 0}
+.kvs b{font:700 13px var(--f-num)}
+.grid{display:grid;grid-template-columns:292px minmax(0,1fr) 430px;gap:12px;margin-top:10px;height:calc(100vh - 205px);min-height:620px}
+.col{display:flex;flex-direction:column;gap:10px;min-height:0;min-width:0}
+.card{margin:0 !important}
+.sc{padding:10px 12px;flex:1;display:flex;flex-direction:column;justify-content:space-between;min-height:0}
+.sc .r1{display:flex;align-items:center;gap:8px}
+.sc .ch{width:30px;height:30px;border-radius:7px;display:grid;place-items:center;font-weight:800;font-size:15px;border:1.2px solid;flex:none}
+.sc .nm{font-weight:700;font-size:15.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc .en{font:9.5px var(--f-num);color:var(--faint)}
+.sc .stp{margin-left:auto;font-size:10.5px;font-weight:700;border-radius:5px;padding:1px 7px;border:1px solid}
+.sc .rule{font-size:12px;font-weight:600}
+.sc .cnt{font-size:11.5px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc .pr{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--ink2)}
+.sc .pr b{color:var(--ink);font:700 12px var(--f-num)}
+.bar5{height:5px;border-radius:3px;background:var(--line);flex:1;overflow:hidden}
+.bar5 i{display:block;height:100%;border-radius:3px}
+.flow{padding:12px 14px;flex:none}
+.tt{font:11px var(--f-num);color:var(--ink2);display:flex;justify-content:space-between}
+.minis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
+.mini{border:1px solid;border-radius:8px;padding:6px 8px;font-size:12px;min-width:0;background:rgba(255,255,255,.02)}
+.mini b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nodes{display:flex;justify-content:space-between;margin:12px 6px 6px;position:relative}
+.nodes::before{content:"";position:absolute;left:30px;right:30px;top:21px;border-top:1px dashed var(--line)}
+.node{text-align:center;position:relative;font-size:10.5px;width:90px}
+.node .c{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;margin:0 auto 4px;font-weight:800;font-size:16px;border:2px solid;background:var(--panel)}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
+.tile{background:var(--panel2);border-radius:8px;padding:6px 10px}
+.tile .k{font-size:10.5px;color:var(--warn)}
+.tile .v{font:700 20px var(--f-num)}
+.tile .s{font-size:9.5px;color:var(--faint)}
+.mid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;flex:1;min-height:0}
+.fac{padding:12px;overflow:hidden;display:flex;flex-direction:column}
+.chk{display:grid;grid-template-columns:70px 1fr 44px;gap:8px;align-items:center;font-size:11.5px;margin:3px 0}
+.chk .bar5 i{background:var(--bad)}
+.log{padding:12px;display:flex;flex-direction:column;overflow:hidden}
+.term{flex:1;overflow:auto;font:11.5px/1.55 var(--f-num);background:var(--term);border-radius:6px;padding:6px 8px;margin-top:6px}
+.term .h{color:var(--gold)} .term .x{color:var(--bad)} .term .i{color:var(--ink2)}
+.score{padding:10px 14px;flex:none;display:grid;grid-template-columns:260px 1fr;gap:16px;height:118px}
+.hits{border:1.5px solid rgba(245,196,81,.8) !important;background:linear-gradient(180deg,rgba(245,196,81,.10),var(--panel) 50%) !important;padding:12px;flex:1;display:flex;flex-direction:column;min-height:0}
+.hits h2{margin:0;color:var(--gold);font-size:16px;display:flex;align-items:center;gap:8px}
+.hits h2 b{font:700 22px var(--f-num)}
+.hitlist{overflow:auto;flex:1;margin-top:6px}
+.hitrow{display:grid;grid-template-columns:4px 46px 1fr 22px 58px;gap:8px;align-items:center;border-radius:9px;padding:7px 8px 7px 0;margin-top:6px;background:linear-gradient(90deg,color-mix(in srgb,var(--c) 18%,transparent),var(--panel2));border:1px solid color-mix(in srgb,var(--c) 40%,transparent);cursor:pointer}
+.hitrow.sel{border-color:var(--c)}
+.hitrow .lb{width:4px;height:100%;background:var(--c);border-radius:9px 0 0 9px}
+.hitrow .nm{font-weight:700;font-size:14.5px}
+.hitrow .sub2{font-size:10.5px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hitrow .scb{text-align:right;font:700 20px var(--f-num)}
+.hitrow .gp{font-size:10px;font-weight:700;border-radius:99px;padding:0 6px;display:inline-block}
+.stream{height:250px;flex:none;padding:12px;display:flex;flex-direction:column}
+.srow{display:grid;grid-template-columns:40px 14px 1fr 34px;gap:6px;font-size:11.5px;padding:3px 4px;border-radius:5px;cursor:pointer}
+.srow.rej{color:var(--faint)} .srow.rej .n{text-decoration:line-through}
+.srow.hit{background:rgba(245,196,81,.08)}
+.prompt{position:fixed;inset:0;display:grid;place-items:center;background:rgba(5,8,12,.55);z-index:20}
+.prompt .box{background:var(--panel);border:1.5px solid var(--good);border-radius:16px;padding:26px 30px;max-width:520px;text-align:center}
+.prompt pre{text-align:left;font:11px var(--f-num);color:var(--ink2);background:var(--term);border-radius:6px;padding:6px 8px;max-height:110px;overflow:auto}
+.foot{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:11px;color:var(--faint)}
+.foot .w{border:1px solid rgba(232,185,49,.8);color:var(--warn);border-radius:6px;padding:2px 10px;font-weight:600}
+</style>
+<link rel="stylesheet" href="/theme.css">
+</head>
+<body>
+<div class="wrap">
+  <nav class="top"></nav>
+  <div class="ctl">
+    <span class="sg" id="mk"><button data-v="cn">A股</button><button data-v="us">美股</button></span>
+    <select id="nn" title="股票池：按成交额从大到小"><option value="1500">前 1500 只</option><option value="3000">前 3000 只</option><option value="0">全市场</option></select>
+    <span class="sp"></span>
+    <span class="sg" id="mode"><button data-v="replay" class="on">回放复盘</button><button data-v="live">实时盯盘</button></span>
+    <span id="c-replay" style="display:contents">
+      <select id="r-date" title="交易日（近 5 个）"></select>
+      <select id="r-win" title="回放时段"></select>
+      <select id="r-speed" title="回放速度"><option value="600">慢 0.6秒/分</option><option value="250" selected>中 0.25秒/分</option><option value="80">快 0.08秒/分</option></select>
+      <button class="gbtn" id="r-play">▶ 开始回放</button>
+      <button class="hbtn" id="r-end" disabled>跳到结尾</button>
+      <button class="hbtn" id="r-dl" title="重新下载近 5 个交易日的分时">⇩ 更新分时</button>
+      <button class="hbtn" id="r-save" disabled title="保存这一天的全部信号（命中与剔除都存），统计页可查、之后自动比对">⇩ 存入数据库</button>
+    </span>
+    <span id="c-live" style="display:none">
+      <button class="gbtn" id="l-start">◉ 开始盯盘</button>
+      <label style="font-size:12.5px"><input type="checkbox" id="l-notify" checked> 命中弹系统通知</label>
+      <span class="dim" id="l-phase" style="font-size:11.5px"></span>
+    </span>
+  </div>
+
+  <div class="card head">
+    <div class="ico">&gt;_</div>
+    <div>
+      <h1>AI 盯盘助手 <span class="gpill" id="h-pool">A股 · 前 1,500 只</span></h1>
+      <div class="st"><i id="st-dot" style="background:var(--ink2)"></i><b id="st-text" style="color:var(--ink2)">待命 · 选好交易日后开始回放</b></div>
+      <div style="margin-top:5px;display:flex;gap:8px;align-items:center"><span class="gpill" id="h-pill">六套策略待命</span><span style="font-size:11px;color:var(--faint)">规则引擎 · 没有依据，不出信号</span></div>
+    </div>
+    <div class="newhit"><div class="b" id="newhit" style="visibility:hidden"><span class="s">★</span><div><div style="font-size:10.5px;color:var(--gold);font-weight:700" id="nh-t">新命中</div>
+      <div style="display:flex;gap:10px;align-items:baseline"><b style="font-size:18px" id="nh-n"></b><span style="font-size:12px;color:var(--warn)" id="nh-s"></span><b class="num" style="color:var(--gold)" id="nh-g"></b></div></div></div></div>
+    <div class="bignum"><b id="scanned">0</b><small>今日累计扫描 · 只次 · 逐分钟实测</small><div style="font-size:12px;font-weight:700" id="cand">候选 0 × 6 套策略</div></div>
+    <div class="kvs"><div><span class="dim">信号</span><b id="k-sig">0</b></div><div><span class="dim">共振</span><b id="k-res" style="color:var(--good)">0</b></div>
+      <div><span class="dim">剔除</span><b id="k-rej" style="color:var(--bad)">0</b></div><div><span class="dim" id="k-idxname">沪深300</span><b id="k-idx">—</b></div></div>
+  </div>
+
+  <div class="grid">
+    <div class="col" id="cards"></div>
+    <div class="col">
+      <div class="card flow">
+        <div class="tt"><span>LIVE FLOW · <span id="flowseq"></span></span><span id="flowclock">--:--</span></div>
+        <div class="minis" id="minis"></div>
+        <div class="nodes" id="nodes"></div>
+        <div class="tiles"><div class="tile"><div class="k">股票池</div><div class="v" id="t-pool">0</div><div class="s">近 20 日成交额前列</div></div>
+          <div class="tile"><div class="k">候选</div><div class="v" id="t-cand">0</div><div class="s">有昨收与日线背景</div></div>
+          <div class="tile"><div class="k">纪律剔除</div><div class="v" id="t-rej">0</div><div class="s">纪律分 &lt; 60 不采纳</div></div>
+          <div class="tile"><div class="k">日志</div><div class="v" id="t-log">第 0 行</div><div class="s">每一步都有记录</div></div></div>
+      </div>
+      <div class="mid2">
+        <div class="card fac" id="fac"></div>
+        <div class="card log"><div class="tt"><span>$ tail -f run.log</span><span id="logn">0 行</span></div><div class="term" id="term"></div></div>
+      </div>
+      <div class="card score">
+        <div><div class="tt"><span>今日战绩 · 开工 vs 现在</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:6px"><span class="dim">开工</span><b class="num">0 条</b></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px"><span class="dim">现在</span><b class="num" style="font-size:24px;color:var(--good)" id="sc-now">0 条信号</b></div>
+          <div class="bar5" style="margin-top:4px"><i id="sc-bar" style="width:0;background:var(--good)"></i></div>
+          <div class="dim" style="font-size:10.5px;margin-top:4px" id="sc-sum"></div></div>
+        <div><div class="tt"><span>信号曲线</span><span id="sc-range"></span></div><div id="curve" style="height:80px"></div></div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card hits"><h2>★ 命中 · 纪律通过 <b id="hit-n">0</b><span style="margin-left:auto;font-size:11px;font-weight:400;color:var(--ink2)" id="hit-sub"></span></h2>
+        <div style="font-size:10.5px;color:var(--faint)">纪律分 ≥ 60 才算命中；被剔除的在下方“监控流水”里</div>
+        <div class="hitlist" id="hits"></div></div>
+      <div class="card stream"><div class="tt"><span>监控流水 · 全部 <b id="s-n" style="color:var(--ink)">0</b></span><span style="color:var(--bad)">纪律剔除 <b id="s-rej">0</b></span></div>
+        <div style="overflow:auto;flex:1;margin-top:6px" id="stream"></div></div>
+    </div>
+  </div>
+  <div class="foot"><span class="w">规则化策略输出 · 真实行情 · 非投资建议</span><span id="foot-r"></span></div>
+</div>
+<div class="prompt" id="prompt" hidden><div class="box">
+  <div style="color:var(--good);font:700 40px var(--f-num)">&gt;_</div>
+  <h2 style="margin:6px 0" id="pr-t">这个组合还没有分时数据</h2>
+  <div class="dim" style="font-size:13px" id="pr-s"></div>
+  <button class="gbtn" id="pr-go" style="margin-top:14px;font-size:14px;padding:8px 22px">⇩ 开始下载</button>
+  <pre id="pr-log" hidden></pre></div></div>
+<script src="/common.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const fmtT = t => t == null ? "--:--" : String(Math.floor(t / 100)).padStart(2, "0") + ":" + String(t % 100).padStart(2, "0");
+const fmtN = n => Number(n || 0).toLocaleString("en-US");
+let META = null, mode = "replay", MK = localStorage.getItem("aidp_mk") || "cn", NN = localStorage.getItem("aidp_nn") || "1500";
+let MINS = [], CARDS = {}, ORDER = [], shown = [], selKey = null, logs = [];
+let R = null, timer = null, clockI = 0, finished = false, liveSince = 0, liveTimer = null, liveDate = "", LIVE = null;
+const Q = () => `market=${MK}&n=${NN}`;
+const key = s => s.code + s.strategy + s.t;
+const WINS = {cn: [["930-1500", "全天 09:30–15:00"], ["930-1130", "上午 09:30–11:30"], ["1000-1330", "两小时 10:00–13:30"], ["1300-1500", "下午 13:00–15:00"]],
+              us: [["930-1600", "全天 09:30–16:00（纽约）"], ["930-1200", "上午 09:30–12:00"], ["1200-1600", "下午 12:00–16:00"]]};
+const EST = {cn: {1500: "约 3 分钟", 3000: "约 5 分钟", 0: "约 8 分钟"}, us: {1500: "约 3.5 分钟", 3000: "约 8 分钟", 0: "约 25 分钟"}};
+const sigDate = () => mode === "live" ? liveDate : (R ? R.date : $("#r-date").value);
+const favBtn = s => FAV.btn({source: "monitor", market: MK, date: sigDate(), code: s.code, name: s.name, method: s.strategy_name, price: s.price});
+const grade = g => g === "A" ? "var(--gold)" : g === "B" ? "var(--good)" : "var(--bad)";
+function setSeg(id, v) { document.querySelectorAll(id + " button").forEach(b => b.classList.toggle("on", b.dataset.v === v)); }
+
+async function loadMeta() {
+  META = await api("/api/monitor/meta?" + Q());
+  const mi = META.markets[MK];
+  MINS = mi.minutes; CARDS = META.cards; ORDER = META.order;
+  $("#k-idxname").textContent = mi.index_name;
+  $("#h-pool").textContent = `${mi.name} · ${NN === "0" ? "全市场" : "前"} ${fmtN(META.stocks || +NN)} 只`;
+  const ws = $("#r-win"), wv = ws.value;
+  ws.innerHTML = WINS[MK].map(([v, t]) => `<option value="${v}">${t}</option>`).join("");
+  ws.value = WINS[MK].some(w => w[0] === wv) ? wv : (MK === "cn" ? "1000-1330" : "930-1600");
+  const sel = $("#r-date"), cur = sel.value;
+  if (META.dates.length) {
+    sel.innerHTML = META.dates.slice().reverse().map(d => `<option>${d}</option>`).join("");
+    if (cur && META.dates.includes(cur)) sel.value = cur;
+    sel.disabled = false;
+  } else {   // 没有分时数据：明确写出原因，而不是一个点不开的空下拉框
+    sel.innerHTML = `<option>${META.building ? "分时数据下载中…" : "先下载分时数据"}</option>`; sel.disabled = true;
+  }
+  $("#r-play").disabled = !META.dates.length;
+  $("#r-dl").disabled = !!META.building;
+  const ph = {open: "交易中", lunch: "午间休市", pre: "盘前", closed: "已收盘 / 非交易日"}[META.phase];
+  $("#l-phase").textContent = `${MK === "us" ? "纽约" : "北京"}时间 ${META.cn_time.slice(11, 16)} · ${ph}`;
+  $("#foot-r").textContent = META.dates.length ? `${mi.name} 分时 ${fmtN(META.stocks)} 只 · 更新于 ${META.built} · ${META.dates.slice(-1)[0]}` : "";
+  const pr = $("#prompt");      // 下载提示（与 Mac 版一致）
+  pr.hidden = !(mode === "replay" && (!META.dates.length || META.building));
+  $("#pr-t").textContent = META.building ? "正在下载分时数据…" : "这个组合还没有分时数据";
+  $("#pr-s").textContent = `${mi.name} · ${NN === "0" ? "全市场" : "前 " + NN + " 只"}：下载近 5 个交易日的分时（${EST[MK][NN] || ""}），之后就可以选交易日回放。`;
+  $("#pr-go").hidden = !!META.building;
+  $("#pr-log").hidden = !META.build_log.length;
+  $("#pr-log").textContent = META.build_log.join("\n");
+  if (META.building) setTimeout(loadMeta, 2500);
+  renderAll();
+}
+$("#pr-go").onclick = $("#r-dl").onclick = async () => { await api("/api/monitor/refresh?" + Q()); loadMeta(); };
+
+function curT() { return mode === "replay" ? (R ? MINS[Math.min(clockI, MINS.length - 1)] : null) : (LIVE && LIVE.t) || null; }
+function stratStatus(k) {
+  const w = CARDS[k] && CARDS[k].window, t = curT();
+  if (!w || t == null) return ["待命", "var(--ink2)"];
+  if (finished || t > w[1]) return ["完工", "var(--good)"];
+  if (t < w[0]) return ["等待", "var(--warn)"];
+  return ["扫描中", "var(--cyan)"];
+}
+function renderCards() {
+  if (!META) return;
+  const count = (R && R.count) || (LIVE && LIVE.count) || 0, t = curT();
+  $("#cards").innerHTML = ORDER.map(k => {
+    const c = CARDS[k], sigs = shown.filter(s => s.strategy === k), hits = sigs.filter(s => s.grade !== "C");
+    const best = hits.slice().sort((a, b) => b.score - a.score)[0];
+    const [stt, stc] = stratStatus(k), w = c.window;
+    let done = 0;
+    if (t != null) { const a = MINS.indexOf(w[0]), b = MINS.indexOf(w[1]), i = MINS.indexOf(Math.min(Math.max(t, w[0]), w[1])); done = b > a ? Math.max(0, (i - a) / (b - a)) : 0; if (finished) done = 1; }
+    const proc = Math.round(done * count * (MINS.indexOf(w[1]) - MINS.indexOf(w[0])));
+    return `<div class="card sc"><div class="r1"><span class="ch" style="color:${c.color};border-color:${c.color};background:color-mix(in srgb,${c.color} 14%,transparent)">${c.char}</span>
+      <span class="nm">${esc(META.strategies[k])}</span><span class="en">${c.en}</span><span class="stp" style="color:${stc};border-color:${stc}">${stt}</span></div>
+      <div class="rule" style="color:${c.color}">${esc(c.rule)}</div>
+      <div class="cnt">剔除 ${sigs.length - hits.length} · 信号 ${hits.length}${best ? " · 最佳 " + esc(best.name) + " " + best.score : ""}</div>
+      <div class="pr">已处理 <b>${fmtN(proc)}</b><span class="bar5"><i style="width:${done * 100}%;background:${c.color}"></i></span></div></div>`;
+  }).join("");
+}
+
+function renderAll(freshKeys) {
+  if (!META) return;
+  const hits = shown.filter(s => s.grade !== "C"), rej = shown.length - hits.length;
+  const by = hits.reduce((m, s) => ((m[s.code] = m[s.code] || new Set()).add(s.strategy), m), {});
+  const resCodes = new Set(Object.entries(by).filter(([, v]) => v.size >= 2).map(([c]) => c));
+  const count = (R && R.count) || (LIVE && LIVE.count) || 0, t = curT();
+  const elapsed = t == null ? 0 : (finished ? MINS.length : MINS.indexOf(t) + 1);
+  $("#scanned").textContent = fmtN(count * elapsed);
+  $("#cand").textContent = `候选 ${fmtN(count)} × 6 套策略`;
+  $("#k-sig").textContent = hits.length; $("#k-res").textContent = resCodes.size; $("#k-rej").textContent = rej;
+  $("#h-pill").textContent = finished ? `六套策略全部跑完 · 信号 ${hits.length} 条` : (t != null ? `六套策略运行中 · 候选 ${fmtN(count)}` : "六套策略待命");
+  $("#flowseq").textContent = ORDER.map(k => CARDS[k].char).join(" → ");
+  $("#flowclock").textContent = fmtT(t);
+  const last4 = hits.slice(-4).reverse();
+  $("#minis").innerHTML = last4.map(s => `<div class="mini" style="border-color:${CARDS[s.strategy].color}"><b>${esc(s.name)}</b><span style="color:${CARDS[s.strategy].color};font-size:10.5px">${esc(s.strategy_name)} · ${s.score}</span></div>`).join("")
+    + "<div></div>".repeat(Math.max(0, 4 - last4.length));
+  $("#nodes").innerHTML = ORDER.map(k => { const c = CARDS[k], n = hits.filter(s => s.strategy === k).length;
+    return `<div class="node"><div class="c" style="color:${c.color};border-color:${c.color};background:color-mix(in srgb,${c.color} 16%,var(--panel))">${c.char}</div>
+      <div style="color:${c.color}">${esc(META.strategies[k])}</div><div class="dim">信号 ${n}</div></div>`; }).join("");
+  $("#t-pool").textContent = fmtN(META.stocks); $("#t-cand").textContent = fmtN(count); $("#t-rej").textContent = rej;
+  $("#t-log").textContent = "第 " + logs.length + " 行";
+  $("#hit-n").textContent = hits.length;
+  $("#hit-sub").textContent = hits.length ? `A 可执行 ${hits.filter(s => s.grade === "A").length} · B 观察 ${hits.filter(s => s.grade === "B").length} · 共振 ${resCodes.size}` : "";
+  $("#hits").innerHTML = hits.length ? hits.slice().reverse().map(s => { const c = CARDS[s.strategy].color, A = s.grade === "A";
+    return `<div class="hitrow ${key(s) === selKey ? "sel" : ""}" data-k="${key(s)}" style="--c:${c}"><span class="lb"></span><b class="num">${s.time}</b>
+      <div style="min-width:0"><span class="nm">${esc(s.name)}</span> <span class="num dim" style="font-size:10px">${esc(s.code)}</span>
+        ${resCodes.has(s.code) ? '<span class="gp" style="background:var(--good);color:#06110c">共振</span>' : ""}
+        <div class="sub2"><b style="color:${c}">${esc(s.strategy_name)}</b> 量比 ${s.lb.toFixed(1)} · 涨 ${sgn(s.chg, 1)} · 止损 ${s.stop.toFixed(2)}</div></div>
+      ${favBtn(s)}<div class="scb" style="color:${A ? "var(--gold)" : "var(--good)"}">${s.score}
+        <div><span class="gp" style="${A ? "background:var(--gold);color:#0b0f14" : "border:1px solid var(--good);color:var(--good)"}">${A ? "A 可执行" : "B 观察"}</span></div>
+        ${finished && s.after ? `<div class="num ${cls(s.after.close)}" style="font-size:9.5px;font-weight:400">收 ${sgn(s.after.close, 1)}</div>` : ""}</div></div>`; }).join("")
+    : `<div class="empty" style="padding:40px 0">还没有命中</div>`;
+  $("#s-n").textContent = shown.length; $("#s-rej").textContent = rej;
+  $("#stream").innerHTML = shown.slice().reverse().slice(0, 300).map(s => { const h = s.grade !== "C";
+    return `<div class="srow ${h ? "hit" : "rej"}" data-k="${key(s)}"><span class="num">${s.time}</span><span style="color:${h ? "var(--gold)" : "var(--bad)"}">${h ? "★" : "✕"}</span>
+      <span class="n" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><b>${esc(s.name)}</b> <span style="color:${h ? CARDS[s.strategy].color : "inherit"}">${esc(s.strategy_name)}</span></span>
+      <b class="num" style="text-align:right;color:${h ? "var(--gold)" : "inherit"}">${s.score}</b></div>`; }).join("");
+  $("#sc-now").textContent = hits.length + " 条信号";
+  $("#sc-bar").style.width = Math.min(100, hits.length * 4) + "%";
+  const aft = hits.filter(s => s.after);
+  $("#sc-sum").textContent = finished && aft.length ? `已扫描 ${fmtN(count * MINS.length)} · 复盘：信号价→收盘 平均 ${sgn(aft.reduce((a, s) => a + s.after.close, 0) / aft.length)}，收盘为正 ${Math.round(aft.filter(s => s.after.close > 0).length / aft.length * 100)}%` : "";
+  curve(hits); renderCards();
+  if (freshKeys) {
+    const nh = shown.filter(s => freshKeys.has(key(s)) && s.grade !== "C");
+    if (nh.length) {
+      const s = nh[nh.length - 1];
+      $("#newhit").style.visibility = "visible";
+      $("#nh-t").textContent = "新命中 · " + s.time; $("#nh-n").textContent = s.name; $("#nh-s").textContent = s.strategy_name;
+      $("#nh-g").textContent = `${s.score} 分 · ${s.grade === "A" ? "A 可执行" : "B 观察"}`;
+      selKey = key(s); renderFactor();
+      if (mode === "live" && $("#l-notify").checked && window.Notification && Notification.permission === "granted")
+        new Notification("★ 命中 " + s.name, {body: `${s.strategy_name} · ${s.score} 分 · ${s.time}`});
+    }
+  }
+}
+
+function curve(hits) {
+  const el = $("#curve"), W = el.clientWidth || 400, H = 80;
+  if (!MINS.length) { el.innerHTML = ""; return; }
+  const a = R ? MINS.indexOf(R.start) : 0, b = R ? MINS.indexOf(R.end) : MINS.length - 1;
+  $("#sc-range").textContent = fmtT(MINS[a]) + " → " + fmtT(MINS[b]);
+  const pts = [], tot = Math.max(1, hits.length), ts = hits.map(s => MINS.indexOf(s.t)).sort((x, y) => x - y), t = curT();
+  let n = 0;
+  for (let i = a; i <= b; i++) { while (n < ts.length && ts[n] <= i) n++; if (t != null && MINS[i] > t && !finished) break; pts.push([(i - a) / Math.max(1, b - a) * W, H - 4 - n / tot * (H - 10)]); }
+  if (!pts.length || t == null) { el.innerHTML = ""; return; }
+  const d = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join("");
+  el.innerHTML = `<svg width="${W}" height="${H}"><defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3CC48A" stop-opacity=".35"/><stop offset="1" stop-color="#3CC48A" stop-opacity="0"/></linearGradient></defs>
+    <path d="${d}L${pts[pts.length - 1][0]} ${H}L0 ${H}Z" fill="url(#cg)"/><path d="${d}" fill="none" stroke="#3CC48A" stroke-width="2"/></svg>`;
+}
+
+let seriesCache = {};
+async function renderFactor() {
+  const s = shown.find(x => key(x) === selKey), el = $("#fac");
+  const head = `<div class="tt"><span>当前标的 · 纪律拆分</span><span>${mode === "live" ? "LIVE" : "REPLAY"}</span></div>`;
+  if (!s) { el.innerHTML = head + `<div class="empty">点一条信号查看纪律拆分与分时</div>`; return; }
+  const c = CARDS[s.strategy].color;
+  el.innerHTML = head + `<div style="display:flex;align-items:center;gap:8px;margin:6px 0"><b style="font-size:18px">${esc(s.name)}</b><span class="num dim" style="font-size:10px">${esc(s.code)}</span>
+      <span style="font-size:11px;font-weight:700;color:${c};border:1px solid ${c};background:color-mix(in srgb,${c} 16%,transparent);border-radius:5px;padding:0 6px">${esc(s.strategy_name)}</span><span class="num dim" style="margin-left:auto">${s.time}</span></div>
+    ${s.checks.map(k => `<div class="chk" title="${esc(k.note)}"><span>${esc(k.name)}</span><span class="bar5"><i style="width:${k.ok ? 100 : 0}%"></i></span><b class="num" style="text-align:right">${k.ok ? k.pts : 0}/${k.pts}</b></div>`).join("")}
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:4px"><span>纪律分 <b class="num" style="font-size:20px;color:${grade(s.grade)}">${s.score}</b> <b style="color:${grade(s.grade)}">${s.grade} · ${esc(s.verdict)}</b></span>
+      <span class="dim num" style="font-size:11px">止损 ${s.stop.toFixed(2)} · 风险 ${s.risk.toFixed(1)}%</span></div>
+    <div class="dim" style="font-size:11px">${esc(s.reason)}</div><div id="dchart" style="flex:1;min-height:90px;margin-top:4px"></div>`;
+  const date = mode === "replay" ? R.date : "live", ck = date + s.code;
+  let d = seriesCache[ck];
+  try { if (!d || mode === "live") { d = await api(mode === "replay" ? `/api/monitor/series?date=${date}&code=${s.code}&${Q()}` : `/api/monitor/series?live=1&code=${s.code}&${Q()}`); seriesCache[ck] = d; } }
+  catch (e) { return; }
+  const box = $("#dchart"); if (!box) return;
+  const W = box.clientWidth || 300, H = Math.max(90, box.clientHeight || 110), P = 4;
+  const lim = mode === "replay" && !finished ? curT() : 9999, n = d.t.filter(t => t <= lim).length;
+  const xs = t => P + (MINS.indexOf(t) / (MINS.length - 1)) * (W - 2 * P);
+  const vals = d.p.slice(0, n).concat(d.v.slice(0, n), [d.pc, s.stop]).filter(x => x != null);
+  const lo = Math.min(...vals), hi = Math.max(...vals), pad = (hi - lo) * 0.08 || 0.01;
+  const ys = v => H - P - ((v - lo + pad) / (hi - lo + 2 * pad)) * (H - 2 * P);
+  const path = arr => arr.slice(0, n).map((v, i) => (i ? "L" : "M") + xs(d.t[i]).toFixed(1) + " " + ys(v).toFixed(1)).join("");
+  box.innerHTML = `<svg width="${W}" height="${H}"><line x1="0" x2="${W}" y1="${ys(d.pc)}" y2="${ys(d.pc)}" stroke="#4A5563" stroke-dasharray="2 3"/>
+    <line x1="${xs(s.t)}" x2="${W}" y1="${ys(s.stop)}" y2="${ys(s.stop)}" stroke="#F0605A" stroke-dasharray="3 3"/>
+    <path d="${path(d.v)}" fill="none" stroke="#E8B931" stroke-width="1.3" stroke-dasharray="4 3"/><path d="${path(d.p)}" fill="none" stroke="#F0605A" stroke-width="1.6"/>
+    <circle cx="${xs(s.t)}" cy="${ys(s.price)}" r="4" fill="#F0605A" stroke="var(--panel)" stroke-width="2"/></svg>`;
+}
+document.addEventListener("click", e => {
+  const r = e.target.closest(".hitrow,.srow");
+  if (r && !e.target.closest(".star")) { selKey = r.dataset.k; renderAll(); renderFactor(); }
+});
+
+function addLog(t, kind, text) { logs.push([t, kind, text]); }
+function renderLog() {
+  $("#term").innerHTML = logs.slice(-200).map(([t, k, x]) => `<div class="${k}"><span style="color:var(--faint)">${fmtT(t)}</span> ${esc(x)}</div>`).join("") + '<div style="color:var(--good)">▌</div>';
+  $("#term").scrollTop = 1e9; $("#logn").textContent = logs.length + " 行";
+}
+function logSigs(sigs) {
+  for (const s of sigs) addLog(s.t, s.grade !== "C" ? "h" : "x", s.grade !== "C" ? `★ 命中 ${s.name} ${s.strategy_name} 纪律分 ${s.score}${s.grade}` : `剔除 ${s.name} ${s.strategy_name} 纪律分 ${s.score}`);
+}
+function setStatus(text, color) { $("#st-text").textContent = text; $("#st-text").style.color = color; $("#st-dot").style.background = color; }
+function idx(points, prev) {
+  if (!points.length) return;
+  const last = points[points.length - 1][1];
+  $("#k-idx").innerHTML = `${last.toFixed(0)} <span class="${cls(last - prev)}" style="font-size:12px">${sgn((last / prev - 1) * 100)}</span>`;
+}
+
+// ---------------- 回放 ----------------
+async function startReplay() {
+  stopTimer();
+  const [a, b] = $("#r-win").value.split("-").map(Number);
+  $("#r-play").disabled = true; $("#r-play").textContent = "计算中…";
+  try { R = await api(`/api/monitor/replay?date=${$("#r-date").value}&start=${a}&end=${b}&${Q()}`); }
+  catch (e) { toast(e.message); $("#r-play").disabled = false; $("#r-play").textContent = "▶ 开始回放"; return; }
+  R.endI = MINS.indexOf(b); R.startI = MINS.indexOf(a);
+  clockI = R.startI; shown = []; selKey = null; finished = false; seriesCache = {}; logs = [];
+  addLog(a, "i", `启动 6 套策略 · ${META.markets[MK].name} ${R.count} 只 · 回放 ${R.date}`);
+  $("#r-play").textContent = "⏸ 暂停"; $("#r-play").disabled = false; $("#r-end").disabled = false;
+  tick(); timer = setInterval(tick, +$("#r-speed").value);
+}
+function tick() {
+  const t = MINS[clockI], fresh = R.signals.filter(s => s.t === t);
+  shown = shown.concat(fresh); logSigs(fresh);
+  if (MK === "cn" && t === 1130) addLog(t, "i", "午间休市");
+  if (MK === "cn" && t === 1300) addLog(t, "i", "下午开盘 · 继续扫描");
+  setStatus(`回放中 · ${fmtT(t)} · ${R.date}`, "var(--good)");
+  idx(R.index.filter(p => p[0] <= t), R.index_prev);
+  if (clockI >= R.endI) { finish(); return; }
+  if (fresh.length || clockI % 3 === 0) { renderAll(new Set(fresh.map(key))); renderLog(); }
+  clockI++;
+}
+function finish() {
+  stopTimer(); finished = true; clockI = R.endI;
+  const before = new Set(shown.map(key));
+  logSigs(R.signals.filter(s => !before.has(key(s)))); shown = R.signals.slice();
+  const hits = shown.filter(s => s.grade !== "C");
+  addLog(R.end, "i", `收工 · 命中 ${hits.length} 条（可执行 ${hits.filter(s => s.grade === "A").length} · 观察 ${hits.filter(s => s.grade === "B").length}）· 剔除 ${shown.length - hits.length}`);
+  setStatus(`已收工 · ${fmtT(R.end)} · ${R.date}`, "var(--good)");
+  idx(R.index.filter(p => p[0] <= R.end), R.index_prev);
+  $("#r-play").textContent = "↻ 重新回放"; $("#r-end").disabled = true; $("#r-save").disabled = false;
+  if (!selKey && hits.length) selKey = key(hits[hits.length - 1]);
+  renderAll(); renderLog(); renderFactor();
+}
+function stopTimer() { if (timer) clearInterval(timer); timer = null; }
+$("#r-play").onclick = () => {
+  if (!R || finished || $("#r-play").textContent.includes("开始")) return startReplay();
+  if (timer) { stopTimer(); $("#r-play").textContent = "▶ 继续"; setStatus(`已暂停 · ${fmtT(MINS[clockI])} · ${R.date}`, "var(--warn)"); }
+  else { timer = setInterval(tick, +$("#r-speed").value); $("#r-play").textContent = "⏸ 暂停"; }
+};
+$("#r-end").onclick = () => R && finish();
+$("#r-save").onclick = async () => {
+  $("#r-save").disabled = true;
+  try { const r = await post("/api/db/save_monitor", {date: R.date, market: MK, n: +NN}); toast(`已存入数据库：信号 ${r.saved} 条，其中命中 ${r.hits} 条`); }
+  catch (e) { toast("保存失败：" + e.message); }
+  $("#r-save").disabled = false;
+};
+$("#r-speed").onchange = () => { if (timer) { stopTimer(); timer = setInterval(tick, +$("#r-speed").value); } };
+function resetView() { stopTimer(); R = null; shown = []; logs = []; selKey = null; finished = false; $("#r-play").textContent = "▶ 开始回放"; $("#r-end").disabled = true; $("#r-save").disabled = true;
+  $("#newhit").style.visibility = "hidden"; $("#k-idx").textContent = "—"; setStatus(mode === "live" ? "未启动" : "待命 · 选好交易日后开始回放", "var(--ink2)"); renderLog(); renderFactor(); }
+["#r-date", "#r-win"].forEach(s => $(s).onchange = () => { resetView(); renderAll(); });
+$("#mk").onclick = e => { const b = e.target.closest("button"); if (!b || b.dataset.v === MK) return; MK = b.dataset.v; localStorage.setItem("aidp_mk", MK); setSeg("#mk", MK); resetView(); loadMeta(); };
+$("#nn").onchange = () => { NN = $("#nn").value; localStorage.setItem("aidp_nn", NN); resetView(); loadMeta(); };
+
+// ---------------- 实时 ----------------
+async function pollLive() {
+  let st; try { st = await api("/api/monitor/live?since=" + liveSince + "&" + Q()); } catch (e) { return; }
+  LIVE = st; liveDate = st.local_date || liveDate; liveSince += st.signals.length;
+  shown = shown.concat(st.signals); logSigs(st.signals);
+  const lab = {idle: "未启动", waiting: "等待开盘", loading: "补算开盘以来的分时…", running: "盯盘中", lunch: "午间休市", done: "已收工", stopped: "已停止", error: "出错"}[st.status];
+  const active = ["waiting", "loading", "running", "lunch"].includes(st.status);
+  setStatus(`${lab} · ${MK === "us" ? "纽约" : "北京"}时间 ${(st.local_time || st.cn_time || "").slice(-8, -3)}`, active ? "var(--good)" : "var(--ink2)");
+  if (st.index_price && st.index_prev) $("#k-idx").innerHTML = `${st.index_price.toFixed(0)} <span class="${cls(st.index_price - st.index_prev)}" style="font-size:12px">${sgn((st.index_price / st.index_prev - 1) * 100)}</span>`;
+  $("#l-start").textContent = active ? "■ 停止盯盘" : "◉ 开始盯盘"; $("#l-start").classList.toggle("stop", active);
+  $("#l-notify").checked = st.notify;
+  renderAll(st.signals.length ? new Set(st.signals.map(key)) : null); renderLog();
+}
+$("#l-start").onclick = async () => {
+  if ($("#l-start").classList.contains("stop")) { await api("/api/monitor/live/stop?" + Q()); return pollLive(); }
+  if (window.Notification && Notification.permission === "default") Notification.requestPermission();
+  shown = []; logs = []; liveSince = 0; await api("/api/monitor/live/start?" + Q()); pollLive();
+};
+$("#l-notify").onchange = e => api("/api/monitor/live/notify?on=" + (e.target.checked ? 1 : 0) + "&" + Q());
+$("#mode").onclick = async e => {
+  const b = e.target.closest("button"); if (!b || b.dataset.v === mode) return;
+  mode = b.dataset.v; setSeg("#mode", mode);
+  $("#c-replay").style.display = mode === "replay" ? "contents" : "none"; $("#c-live").style.display = mode === "live" ? "contents" : "none";
+  clearInterval(liveTimer); resetView(); LIVE = null;
+  if (mode === "live") { $("#prompt").hidden = true; liveSince = 0; await pollLive(); liveTimer = setInterval(pollLive, 5000); } else loadMeta();
+};
+
+setSeg("#mk", MK); $("#nn").value = NN;
+FAV.load().then(loadMeta).then(() => { renderLog(); renderFactor(); });
+window.addEventListener("resize", () => renderAll());
+</script>
+</body>
+</html>

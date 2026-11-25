@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<script>document.documentElement.dataset.theme=localStorage.getItem("aidp_theme")||"dark"</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>统计 · AI 盯盘助手</title>
+<link rel="stylesheet" href="/common.css">
+<style>
+/* 与 Mac App 统计页（数据驾驶舱）同一布局：顶部指标卡 → 三张图 → 按天查询 / 明细 / 右侧栏 */
+body{overflow-x:hidden}
+.wrap{padding:10px 16px 16px !important}
+.bgglow{position:fixed;inset:0;pointer-events:none;z-index:-1;
+  background:radial-gradient(700px 500px at 0 0,rgba(34,211,238,.10),transparent),radial-gradient(700px 500px at 100% 0,rgba(167,139,250,.10),transparent)}
+.hero{display:grid;grid-template-columns:300px repeat(6,minmax(0,1fr));gap:12px;height:156px}
+.ht h1{margin:0;font-size:30px;font-weight:900;display:flex;align-items:center;gap:10px}
+.ht h1 span.t{background:linear-gradient(90deg,var(--hi),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent}
+.ht .s{color:var(--ink2);font-size:12.5px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.vpill{font-size:10px;font-weight:700;color:var(--cyan);border:1px solid color-mix(in srgb,var(--cyan) 70%,transparent);border-radius:99px;padding:0 6px}
+.clock{display:flex;align-items:center;gap:8px;margin-top:4px}
+.clock b{font:700 34px var(--f-num);background:linear-gradient(var(--hi),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent}
+.clock small{font-size:10.5px;color:var(--ink2);line-height:1.25}
+.ht .btns{display:flex;gap:6px;margin-top:4px}
+.ht .btns button{font-size:12px;padding:3px 10px;border-radius:6px;border:1px solid var(--line);background:var(--panel2);color:var(--ink)}
+.kc{padding:12px 14px;display:flex;flex-direction:column;justify-content:space-between;min-width:0}
+.kc .t{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink2)}
+.kc .t i{font-style:normal;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:color-mix(in srgb,var(--c) 16%,transparent);color:var(--c);font-size:14px;font-weight:700}
+.kc .v{font:800 30px/1.1 ui-rounded,"SF Pro Rounded",var(--f-body);background:linear-gradient(var(--hi),var(--c));-webkit-background-clip:text;background-clip:text;color:transparent;white-space:nowrap;overflow:hidden}
+.kc .b{display:flex;justify-content:space-between;align-items:flex-end;font-size:10.5px;color:var(--faint)}
+.charts{display:grid;grid-template-columns:minmax(0,1fr) 560px 330px;gap:12px;height:250px;margin-top:12px}
+.cc{padding:14px;display:flex;flex-direction:column;min-width:0}
+.cc h3{margin:0 0 8px;font-size:14px;display:flex;align-items:center;gap:8px}
+.cc h3 small{font-weight:400;color:var(--ink2);font-size:11px}
+.cc h3 .sp{flex:1}
+.lg{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--ink2);font-weight:400}
+.lg i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.exrow{display:grid;grid-template-columns:168px 1fr 58px 30px;gap:8px;align-items:center;height:21px;font-size:11.5px}
+.exrow .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.exrow .bar{position:relative;height:12px}
+.exrow .bar::before{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:rgba(255,255,255,.08)}
+.exrow .bar i{position:absolute;top:0;height:12px;border-radius:4px}
+.comp{display:flex;gap:14px;align-items:center;flex:1}
+.comp .lgd div{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink2);margin:7px 0}
+.comp .lgd b{margin-left:auto;color:var(--ink);font:700 12px var(--f-num);padding-left:10px}
+.comp .lgd span{width:9px;height:9px;border-radius:2px;display:inline-block}
+.main{display:grid;grid-template-columns:210px minmax(0,1fr) 450px;gap:12px;margin-top:12px;height:calc(100vh - 500px);min-height:420px}
+.pnl{padding:12px;overflow:auto;border-radius:14px}
+.stitle{display:flex;justify-content:space-between;font-size:11px;color:var(--ink2);margin-bottom:8px;font-family:var(--f-num)}
+.d{padding:7px 10px;border-radius:7px;cursor:pointer;margin-bottom:4px;background:var(--panel2);border:1px solid transparent}
+.d.on{background:rgba(91,141,239,.16);border-color:rgba(91,141,239,.8)}
+.d b{font:600 13px var(--f-num)}
+.d .row{display:flex;gap:10px;font-size:10.5px;color:var(--faint)}
+.d .row em{font-style:normal;font-weight:700}
+.dp{display:flex;flex-direction:column;overflow:hidden}
+.dp .hd{display:flex;align-items:baseline;gap:10px}
+.dp .hd h2{margin:0;font:700 20px var(--f-num)}
+.seg2{margin-left:auto;display:inline-flex;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:2px}
+.seg2 button{border:0;background:none;color:var(--ink);padding:3px 14px;border-radius:5px;font-size:12.5px}
+.seg2 button.on{background:var(--accent);color:#fff}
+.rv{background:rgba(91,141,239,.06);border:1px solid rgba(91,141,239,.35);border-radius:8px;padding:10px;font-size:12px;margin-top:10px;white-space:pre-line;max-height:118px;overflow:hidden}
+.rv .h{color:var(--accent);font-weight:600}
+.chips{display:flex;gap:6px;overflow-x:auto;margin-top:10px;flex:none}
+.mchip{min-width:180px;border-radius:6px;padding:5px 8px;font-size:11px}
+.picks{overflow:auto;flex:1;margin-top:8px}
+.picks table{font-size:12px}
+.picks td{padding:5px 6px !important;border-bottom:0 !important}
+.picks tr.val td{background:rgba(60,196,138,.05)}
+.picks tr.valm td{background:rgba(245,196,81,.06)}
+.side{display:flex;flex-direction:column;gap:10px;overflow:auto}
+.side .pnl{overflow:visible}
+.mt td,.mt th{padding:3px 4px !important;border:0 !important;font-size:11.5px}
+.fav{display:flex;gap:8px;align-items:center;padding:3px 0;cursor:pointer}
+.init{margin-top:12px;padding:12px;border-radius:12px;border:1.5px solid var(--warn);background:var(--panel)}
+@media (max-width:1300px){.hero{grid-template-columns:repeat(3,1fr);height:auto}.ht{grid-column:1/-1}.charts{grid-template-columns:1fr;height:auto}.cc{height:250px}.main{grid-template-columns:1fr;height:auto}}
+</style>
+<link rel="stylesheet" href="/theme.css">
+</head>
+<body>
+<div class="bgglow"></div>
+<div class="wrap">
+  <nav class="top"></nav>
+  <div class="hero">
+    <div class="ht">
+      <h1><span style="color:var(--cyan)">⌇</span><span class="t">数据驾驶舱</span></h1>
+      <div class="s">选股 · 盯盘 · 复盘 全部入库，次日自动比对 <span class="vpill" id="ver"></span></div>
+      <div class="clock"><b id="clock">--:--:--</b><small id="clock-sub"></small></div>
+      <div class="btns"><button id="eval" title="用最新行情计算之前选出股票的 T+1/T+3/T+5 表现">⟳ 更新比对</button>
+        <button id="refresh" title="刷新">↻</button></div>
+    </div>
+    <div id="kpis" style="display:contents"></div>
+  </div>
+  <div id="init" class="init" hidden></div>
+  <div class="charts">
+    <div class="neon cc" style="--c:var(--gold)"><h3>每日信号趋势<span class="sp"></span>
+      <span class="lg"><i style="background:var(--gold)"></i>主力选股</span><span class="lg"><i style="background:var(--ngreen)"></i>AI 盯盘</span></h3>
+      <div id="trend" style="flex:1;min-height:0"></div></div>
+    <div class="neon cc" style="--c:var(--violet)"><h3>方法实盘战绩 <small>T+1 超额（相对大盘）</small><span class="sp"></span><small style="color:var(--faint)">样本 ≥ 5 条</small></h3>
+      <div id="excess" style="flex:1"></div></div>
+    <div class="neon cc" style="--c:var(--cyan)"><h3>信号构成</h3><div class="comp" id="comp"></div></div>
+  </div>
+  <div class="main">
+    <div class="neon pnl" style="--c:var(--nblue)"><div class="stitle"><span>按天查询</span><span id="ndays"></span></div><div id="dates"></div></div>
+    <div class="neon pnl dp" style="--c:var(--cyan)">
+      <div class="hd"><h2 id="day-title">—</h2><span class="dim" id="day-wd"></span>
+        <div class="seg2" id="seg"><button data-s="all" class="on">全部</button><button data-s="screener">主力选股</button><button data-s="monitor">AI 盯盘</button><button data-s="stock">个股研判</button></div></div>
+      <div id="day-review"></div>
+      <div class="chips" id="day-methods"></div>
+      <div id="day-stock"></div>
+      <div class="picks"><table class="num"><thead><tr>
+        <th class="l"></th><th class="l">股票</th><th class="l">来源 · 方法</th><th class="l">等级</th><th>信号价</th><th>当日收</th>
+        <th>T+1</th><th>T+3</th><th>T+5</th><th>超额T+1</th><th>5日最高</th><th>止损</th></tr></thead><tbody id="picks"></tbody></table>
+        <div class="empty" id="picks-empty" hidden>这一天没有记录</div></div>
+    </div>
+    <div class="side">
+      <div class="card pnl" style="margin:0"><div class="stitle"><span>方法实盘跟踪（全部日期 · 样本外）</span><span>超额 = 个股 − 同期大盘</span></div>
+        <div class="sub" style="font-size:11px">每天保存的选股，之后真实走势的统计。这是回测之外的“样本外检验”：样本越多越可信，T+1 至少 100 条再下结论；个别暴涨股会拉高平均，同时看中位数。</div>
+        <table class="num mt" style="margin-top:6px"><thead><tr><th class="l">方法</th><th>条数</th><th>T+1</th><th>中位</th><th>胜率</th><th>超额</th></tr></thead><tbody id="methods"></tbody></table></div>
+      <div class="card pnl" style="margin:0"><div class="stitle"><span>★ 收藏</span><span id="nfav"></span></div><div id="favs"></div></div>
+      <div class="card pnl" style="margin:0"><div class="stitle"><span>数据管理 · 删除</span><span>不可恢复</span></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <select id="del-unit"><option value="day">按天</option><option value="week">按周</option><option value="month" selected>按月</option><option value="year">按年</option><option value="before">某天之前全部</option></select>
+          <input type="text" id="del-val" size="12"><button class="btn ghost" id="del-prev">预览</button></div>
+        <div style="margin-top:6px;font-size:12px">
+          <label><input type="checkbox" class="del-w" value="picks" checked> 选股/盯盘记录</label>
+          <label><input type="checkbox" class="del-w" value="reviews" checked> 复盘</label>
+          <label><input type="checkbox" class="del-w" value="favorites" checked> 收藏</label>
+          <label><input type="checkbox" class="del-w" value="analyses" checked> 研判记录</label></div>
+        <div class="sub" id="del-hint" style="font-size:10.5px"></div>
+        <div id="del-res" style="margin-top:8px"></div></div>
+    </div>
+  </div>
+</div>
+<script src="/common.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const COLORS = {"筹码峰突破": "#5B8DEF", "箱体突破": "#3CC48A", "假跌破回升": "#F08A3C", "底部三K反转": "#E8B931", "涨停换筹": "#A178F0",
+                "三波下跌反弹": "#4FC3D9", "二次涨停": "#E8607A", "看涨吞没": "#9AA5B1"};
+const N = {cyan: "#22D3EE", violet: "#A78BFA", gold: "#F5C451", green: "#34D399", blue: "#60A5FA", red: "#F87171", pink: "#F472B6"};
+let S = null, DATE = "", SRC = "all", DAY = null;
+const WDN = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+const WD = d => WDN[new Date(d + "T00:00:00").getDay()];
+const fmtN = n => Number(n || 0).toLocaleString("en-US");
+
+function spark(vals, c) {
+  if (vals.length < 2) return "";
+  const mx = Math.max(...vals) || 1, W = 64, H = 22, id = "sp" + c.slice(1);
+  const pts = vals.map((v, i) => [W * i / (vals.length - 1), H - (v / mx) * H * 0.85 - 2]);
+  const d = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join("");
+  const last = pts[pts.length - 1];
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="${c}" stop-opacity=".45"/><stop offset="1" stop-color="${c}" stop-opacity="0"/></linearGradient></defs>
+    <path d="${d}L${W} ${H}L0 ${H}Z" fill="url(#${id})"/><path d="${d}" fill="none" stroke="${c}" stroke-width="1.8" stroke-linecap="round"/>
+    <circle cx="${last[0]}" cy="${last[1]}" r="3" fill="${c}"/></svg>`;
+}
+const kpi = (icon, title, value, sub, c, sp) => `<div class="neon kc" style="--c:${c}"><div class="t"><i>${icon}</i>${title}</div><div class="v">${value}</div>
+  <div class="b"><span>${sub}</span>${sp ? spark(sp, c) : ""}</div></div>`;
+
+function trend(ds) {
+  const el = $("#trend");
+  if (ds.length < 2) { el.innerHTML = `<div class="empty" style="padding:60px 0">积累两天以上数据后显示趋势</div>`; return; }
+  const W = el.clientWidth || 600, H = el.clientHeight || 190, h = H - 18;
+  const scr = ds.map(d => d.screener), mon = ds.map(d => d.monitor), mx = Math.max(1, ...scr, ...mon);
+  const xs = i => W * i / (ds.length - 1), ys = v => h * (1 - v / mx) + 2;
+  const curve = v => { let d = `M${xs(0)} ${ys(v[0])}`; for (let i = 1; i < v.length; i++) { const m = (xs(i - 1) + xs(i)) / 2; d += `C${m} ${ys(v[i - 1])} ${m} ${ys(v[i])} ${xs(i)} ${ys(v[i])}`; } return d; };
+  const series = (v, c, id) => `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c}" stop-opacity=".42"/><stop offset="1" stop-color="${c}" stop-opacity=".02"/></linearGradient></defs>
+    <path d="${curve(v)}L${W} ${h}L0 ${h}Z" fill="url(#${id})"/><path d="${curve(v)}" fill="none" stroke="${c}" stroke-width="2.2"/>
+    ${v.map((x, i) => `<circle cx="${xs(i)}" cy="${ys(x)}" r="3" fill="${c}"/>`).join("")}`;
+  const grid = [0, 1, 2, 3].map(g => `<line x1="0" x2="${W}" y1="${h * g / 3}" y2="${h * g / 3}" stroke="rgba(255,255,255,.05)"/>`).join("");
+  const step = Math.max(1, Math.ceil(ds.length / 8));
+  const labels = ds.map((d, i) => i % step ? "" : `<text x="${Math.min(Math.max(xs(i), 16), W - 16)}" y="${H - 4}" fill="#4A5563" font-size="9.5" text-anchor="middle" font-family="monospace">${d.date.slice(5)}</text>`).join("");
+  el.innerHTML = `<svg width="${W}" height="${H}">${grid}${series(scr, N.gold, "tg1")}${series(mon, N.green, "tg2")}${labels}</svg>`;
+}
+
+function excess(ms) {
+  let all = ms.filter(m => (m.n1 || 0) >= 5 && m.ex1 != null).sort((a, b) => b.ex1 - a.ex1);
+  if (all.length > 9) all = all.slice(0, 5).concat(all.slice(-4));
+  const mx = Math.max(0.5, ...all.map(m => Math.abs(m.ex1)));
+  $("#excess").innerHTML = all.length ? all.map(m => {
+    const pos = m.ex1 >= 0, w = Math.max(1, Math.abs(m.ex1) / mx * 50);
+    const src = m.source === "screener" ? "选" : (m.market === "us" ? "盯美" : "盯");
+    const tierc = m.tier === "命中" || m.tier === "已验证" ? N.gold : "#4A5563";
+    return `<div class="exrow"><span class="nm"><span style="color:#4A5563;font-size:9.5px;font-weight:700">${src}</span> <b style="font-weight:600">${esc(m.method)}</b>
+      <span style="color:${tierc};font-size:9.5px">${m.tier}</span></span>
+      <span class="bar"><i style="${pos ? `left:50%;width:${w}%;background:linear-gradient(90deg,rgba(248,113,113,.5),${N.red})` : `right:50%;width:${w}%;background:linear-gradient(90deg,${N.green},rgba(52,211,153,.5))`}"></i></span>
+      <b class="num" style="text-align:right;color:${pos ? N.red : N.green}">${sgn(m.ex1)}</b><span class="num" style="text-align:right;color:#4A5563;font-size:10px">${m.n1}</span></div>`;
+  }).join("") : `<div class="empty">比对数据积累后显示</div>`;
+}
+
+function comp(ms) {
+  const sum = (src, tier) => ms.filter(m => m.source === src && m.tier === tier).reduce((a, m) => a + m.n, 0);
+  const parts = [["选股 · 已验证", sum("screener", "已验证"), N.gold], ["选股 · 观察", sum("screener", "未验证"), N.blue],
+                 ["盯盘 · 命中", sum("monitor", "命中"), N.green], ["盯盘 · 剔除", sum("monitor", "剔除"), "#475569"]];
+  const tot = Math.max(1, parts.reduce((a, p) => a + p[1], 0)), R = 57, C = 2 * Math.PI * R;
+  let off = 0;
+  const arcs = parts.filter(p => p[1] > 0).map(p => { const len = C * p[1] / tot; const s = `<circle r="${R}" cx="65" cy="65" fill="none" stroke="${p[2]}" stroke-width="16"
+    stroke-dasharray="${Math.max(0, len - 2)} ${C}" stroke-dashoffset="${-off}" transform="rotate(-90 65 65)"/>`; off += len; return s; }).join("");
+  $("#comp").innerHTML = `<div style="position:relative;width:130px;height:130px;flex:none"><svg width="130" height="130">${arcs}</svg>
+    <div style="position:absolute;inset:0;display:grid;place-items:center;text-align:center"><div><div style="font:800 24px ui-rounded,var(--f-body)">${fmtN(tot)}</div><div style="font-size:10.5px;color:var(--ink2)">条记录</div></div></div></div>
+    <div class="lgd" style="flex:1">${parts.map(p => `<div><span style="background:${p[2]}"></span>${p[0]}<b>${fmtN(p[1])}</b></div>`).join("")}</div>`;
+}
+
+async function load() {
+  S = await api("/api/db/summary");
+  await FAV.load();
+  if (S.app) $("#ver").textContent = "v" + S.app.version + " " + S.app.channel;
+  const ds = S.dates.slice().reverse();
+  const scr = ds.map(d => d.screener), mon = ds.map(d => d.monitor), tot = ds.map(d => d.screener + d.monitor);
+  const n1 = S.methods.reduce((a, m) => a + (m.n1 || 0), 0);
+  const wins = S.methods.reduce((a, m) => a + (m.win1 || 0) * (m.n1 || 0) / 100, 0);
+  $("#kpis").innerHTML =
+    kpi("▦", "数据天数", S.days || 0, S.first ? S.first + " 起" : "—", N.blue, tot) +
+    kpi("◎", "主力选股", fmtN(scr.reduce((a, b) => a + b, 0)), "每次扫描自动入库", N.gold, scr) +
+    kpi("∿", "盯盘信号", fmtN(mon.reduce((a, b) => a + b, 0)), "实盘自动 / 回放手动", N.green, mon) +
+    kpi("✓", "已比对", fmtN(S.tracked), "有 T+1 结果", N.cyan) +
+    kpi("◉", "T+1 胜率", n1 ? (wins / n1 * 100).toFixed(0) + "%" : "—", "全部方法 " + fmtN(n1) + " 条", N.violet) +
+    kpi("★", "研判 · 收藏", (S.counts.analyses || 0) + " · " + S.counts.favorites, "个股研判次数 · ★ 收藏", N.pink);
+  const I = S.init || {};
+  $("#init").hidden = !!I.ready;
+  if (!I.ready) { $("#init").innerHTML = `<b style="color:var(--warn)">首次使用：正在下载近 5 年历史日K（约 10–25 分钟），已完成 ${I.klines} / 约 5000 只</b>
+    <div class="sub" style="font-size:12px">${I.scanning ? "下载完成后会自动扫描一次，主力选股、AI 盯盘（A股）和比对功能就可以用了。期间可以先看每日复盘。" : "当前没有在下载：到“主力选股”页点“更新行情并扫描”即可开始。"}</div>
+    <div class="num" style="font-size:10.5px;color:var(--faint);white-space:pre-wrap">${esc((I.log || "").split("\n").filter(Boolean).slice(-2).join("\n"))}</div>`; setTimeout(load, 8000); }
+  trend(ds); excess(S.methods); comp(S.methods);
+  if (!DATE || !S.dates.some(d => d.date === DATE)) DATE = S.dates.length ? S.dates[0].date : bjNow();
+  $("#ndays").textContent = S.dates.length + " 天";
+  $("#dates").innerHTML = S.dates.length ? S.dates.map(d => `<div class="d ${d.date === DATE ? "on" : ""}" data-d="${d.date}">
+    <b>${d.date}</b> <span class="dim" style="font-size:10.5px">${WD(d.date)}</span>
+    ${d.review ? `<span style="float:right;font-size:9.5px;font-weight:700;color:var(--accent);border:1px solid rgba(91,141,239,.7);border-radius:99px;padding:0 5px">${d.review}</span>` : ""}
+    <div class="row"><span><em style="color:${d.screener ? "var(--warn)" : "var(--faint)"}">选</em> <span style="color:${d.screener ? "var(--ink)" : "var(--faint)"}">${d.screener}</span></span>
+      <span><em style="color:${d.monitor ? "var(--good)" : "var(--faint)"}">盯</em> <span style="color:${d.monitor ? "var(--ink)" : "var(--faint)"}">${d.monitor}</span></span>
+      ${d.stock ? `<span><em style="color:var(--pink)">研</em> ${d.stock}</span>` : ""}
+      ${d.favorites ? `<span><em style="color:var(--gold)">★</em> ${d.favorites}</span>` : ""}</div></div>`).join("")
+    : `<div class="empty">数据库还是空的<br>扫描一次主力选股就会自动存入</div>`;
+  $("#methods").innerHTML = S.methods.map(m => `<tr><td class="l"><span style="color:var(--faint);font-size:9.5px;font-weight:700">${m.source === "screener" ? "选" : (m.market === "us" ? "盯美" : "盯")}</span>
+    <b style="color:${m.source === "screener" ? (COLORS[m.method] || "var(--accent)") : "var(--good)"}">${esc(m.method)}</b>
+    <span style="font-size:9.5px;color:${m.tier === "命中" || m.tier === "已验证" ? "var(--gold)" : "var(--faint)"}">${m.tier}</span></td>
+    <td class="dim">${m.n1 || 0}</td><td class="${cls(m.r1)}" style="font-weight:600">${sgn(m.r1)}</td><td class="${cls(m.med1)}">${sgn(m.med1)}</td>
+    <td>${m.win1 == null ? "—" : m.win1.toFixed(0) + "%"}</td><td class="${cls(m.ex1)}">${sgn(m.ex1)}</td></tr>`).join("") || `<tr><td class="l dim" colspan="6">还没有数据</td></tr>`;
+  $("#nfav").textContent = S.favorites.length + " 只";
+  $("#favs").innerHTML = S.favorites.length ? S.favorites.map(f => `<div class="fav" data-d="${f.date}">
+    ${FAV.btn({source: f.source, market: f.market, date: f.date, code: f.code, name: f.name, method: f.method})}
+    <div style="flex:1"><b>${esc(f.name)}</b> <span class="dim num" style="font-size:10px">${esc(f.code)}</span><div class="dim" style="font-size:10.5px">${f.date} · ${{monitor: "盯盘", stock: "研判"}[f.source] || "选股"} · ${esc(f.method)}</div></div>
+    <div class="num" style="text-align:right;font-size:11px"><div class="${cls(f.r1)}">T+1 ${sgn(f.r1)}</div><div class="${cls(f.r5)}">T+5 ${sgn(f.r5)}</div></div></div>`).join("")
+    : `<div style="color:var(--faint);font-size:12px">在主力选股、AI 盯盘、统计页点 ☆ 收藏</div>`;
+  await loadDay();
+}
+
+async function loadDay() {
+  DAY = await api("/api/db/day?date=" + DATE);
+  document.querySelectorAll(".d").forEach(e => e.classList.toggle("on", e.dataset.d === DATE));
+  $("#day-title").textContent = DATE; $("#day-wd").textContent = WD(DATE);
+  $("#day-review").innerHTML = DAY.review ? `<div class="rv"><span class="h">当日复盘 · ${DAY.review.kind}</span> <span style="color:var(--faint);font-size:11px">生成于 ${DAY.review.created}</span>
+    <a href="/review.html?date=${DATE}" style="float:right">打开复盘 →</a>\n${esc(DAY.review.summary)}</div>` : "";
+  renderDay();
+}
+
+function renderDay() {
+  const an = DAY.analyses || [], showStock = SRC === "all" || SRC === "stock";
+  $("#day-stock").innerHTML = showStock && an.length ? `<div style="margin-top:10px;font-size:11px;color:var(--ink2)">个股研判记录 · ${an.length} 次</div>
+    <table class="num" style="font-size:12px;margin-top:4px"><thead><tr><th class="l"></th><th class="l">时间</th><th class="l">股票</th><th>价格</th><th>涨跌</th><th class="l">评级</th><th>综合分</th><th>买入区间</th><th>止损</th><th>风险回报</th></tr></thead><tbody>
+    ${an.map(a => `<tr title="${esc(a.summary)}"><td class="l">${FAV.btn({source: "stock", market: a.market, date: a.date, code: a.code, name: a.name, method: "个股研判", price: a.price})}</td>
+      <td class="l">${a.created.slice(11, 16)}</td><td class="l"><a href="/?code=${encodeURIComponent(a.code)}&market=${encodeURIComponent(a.market)}" style="color:var(--ink);text-decoration:none"><b style="font-family:var(--f-body)">${esc(a.name || a.code)}</b> <span class="dim" style="font-size:10px">${esc(a.code)} · ${esc(a.market)}</span></a></td>
+      <td>${a.price == null ? "—" : a.price.toFixed(2)}</td><td class="${cls(a.chg)}">${sgn(a.chg)}</td><td class="l"><b style="font-family:var(--f-body)">${esc(a.rating || "—")}</b></td>
+      <td>${a.score == null ? "—" : Math.round(a.score)}</td><td>${a.buy_lo == null ? "—" : a.buy_lo.toFixed(2) + "–" + a.buy_hi.toFixed(2)}</td>
+      <td>${a.stop == null ? "—" : a.stop.toFixed(2)}</td><td>${a.rr == null ? "—" : a.rr.toFixed(2)}</td></tr>`).join("")}</tbody></table>` : "";
+  document.querySelector(".picks").hidden = SRC === "stock";
+  $("#day-stock").style.cssText = SRC === "stock" ? "flex:1;overflow:auto;min-height:0" : "max-height:210px;overflow:auto;flex:none";
+  const ms = DAY.methods.filter(m => SRC === "all" || m.source === SRC);
+  $("#day-methods").innerHTML = ms.map(m => `<div class="mchip"><b style="color:${m.source === "screener" ? (COLORS[m.method] || "var(--accent)") : "var(--good)"}">${esc(m.method)}</b>
+    <span style="color:var(--ink2);font-size:9.5px">${m.tier}</span><span style="float:right;color:var(--ink2)" class="num">${m.n}只</span><br>
+    ${m.r1 == null && m.r0 != null ? `<span class="num ${cls(m.r0)}" style="font-weight:600">当日收 ${sgn(m.r0)}</span> <span style="color:var(--faint)">T+1 待比对</span>`
+      : `<span class="num ${cls(m.r1)}" style="font-weight:600">T+1 ${sgn(m.r1)}</span> <span class="dim num">胜率 ${m.win1 == null ? "—" : m.win1.toFixed(0) + "%"}</span> <span class="num ${cls(m.ex1)}">超额 ${sgn(m.ex1)}</span>`}</div>`).join("");
+  const ps = DAY.picks.filter(p => SRC === "all" || p.source === SRC);
+  $("#picks-empty").hidden = ps.length > 0;
+  $("#picks").innerHTML = ps.map(p => {
+    const mon = p.source === "monitor", ex = p.r1 != null && p.b1 != null ? p.r1 - p.b1 : null;
+    const gc = {A: "var(--good)", B: "var(--warn)", C: "var(--bad)"}[p.grade] || "var(--ink2)";
+    return `<tr class="${p.validated ? (mon ? "valm" : "val") : ""}" title="${esc(p.note)}">
+      <td class="l">${FAV.btn({source: p.source, market: p.market, date: p.date, code: p.code, name: p.name, method: p.method, price: p.price})}</td>
+      <td class="l"><b style="font-family:var(--f-body)">${esc(p.name)}</b> <span style="color:var(--ink2);font-size:10px">${esc(p.code)}</span></td>
+      <td class="l"><span style="color:var(--ink2);font-size:10px;font-weight:700">${mon ? "盯" + (p.market === "us" ? "·美 " : " ") + p.time : "选"}</span> <b style="font-family:var(--f-body);color:${mon ? "var(--good)" : (COLORS[p.method] || "var(--accent)")}">${esc(p.method)}</b></td>
+      <td class="l"><b style="color:${mon ? (p.validated ? gc : "var(--faint)") : (p.validated ? "var(--good)" : "var(--ink2)")}">${mon ? `${p.grade} ${p.score}` : (p.validated ? "✓ 验证" : Math.round(p.score))}</b></td>
+      <td>${p.price == null ? "—" : p.price.toFixed(2)}</td><td class="${cls(p.r0)}">${mon ? sgn(p.r0) : "—"}</td>
+      <td class="${cls(p.r1)}">${sgn(p.r1)}</td><td class="${cls(p.r3)}">${sgn(p.r3)}</td><td class="${cls(p.r5)}">${sgn(p.r5)}</td>
+      <td class="${cls(ex)}">${sgn(ex)}</td><td class="${cls(p.max5)}">${sgn(p.max5)}</td>
+      <td style="color:${p.stop_hit ? "var(--bad)" : "var(--faint)"}">${p.stop_hit ? "破止损" : (p.stop == null ? "—" : p.stop.toFixed(2))}</td></tr>`;
+  }).join("");
+}
+
+$("#dates").onclick = e => { const d = e.target.closest(".d"); if (d) { DATE = d.dataset.d; loadDay(); } };
+$("#favs").onclick = e => { const d = e.target.closest(".fav"); if (d && !e.target.closest(".star")) { DATE = d.dataset.d; loadDay(); } };
+$("#seg").onclick = e => { const b = e.target.closest("button"); if (!b) return; SRC = b.dataset.s;
+  document.querySelectorAll("#seg button").forEach(x => x.classList.toggle("on", x === b)); renderDay(); };
+$("#eval").onclick = async () => { $("#eval").disabled = true; $("#eval").textContent = "比对中…";
+  try { await post("/api/db/evaluate"); toast("比对已更新"); await load(); } catch (e) { toast(e.message); }
+  $("#eval").disabled = false; $("#eval").textContent = "⟳ 更新比对"; };
+$("#refresh").onclick = () => load();
+window.addEventListener("resize", () => S && trend(S.dates.slice().reverse()));
+
+const HINT = {day: "输入日期 YYYY-MM-DD，删除这一天", week: "输入该周任意一天，删除周一到周日", month: "输入 YYYY-MM，删除整月",
+              year: "输入 YYYY，删除整年", before: "删除这一天之前的全部数据（例如保留最近一个月）"};
+function delDefault() {
+  const u = $("#del-unit").value, t = DATE || bjNow();
+  const m = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  $("#del-val").value = {day: t, week: t, month: t.slice(0, 7), year: t.slice(0, 4), before: m}[u];
+  $("#del-hint").textContent = HINT[u]; $("#del-res").innerHTML = "";
+}
+const what = () => [...document.querySelectorAll(".del-w")].filter(x => x.checked).map(x => x.value).join(",");
+$("#del-unit").onchange = delDefault;
+$("#del-prev").onclick = async () => {
+  try {
+    const r = await api(`/api/db/delete_preview?unit=${$("#del-unit").value}&value=${encodeURIComponent($("#del-val").value)}&what=${what()}`);
+    const c = r.counts, tot = (c.picks || 0) + (c.reviews || 0) + (c.favorites || 0);
+    $("#del-res").innerHTML = `<div style="background:rgba(240,96,90,.07);border:1px solid rgba(240,96,90,.4);border-radius:8px;padding:10px">
+      <b class="num">${r.from} ~ ${r.to}</b><div class="dim" style="font-size:12px">选股/盯盘 ${c.picks || 0} 条 · 复盘 ${c.reviews || 0} 篇 · 收藏 ${c.favorites || 0} 条</div>
+      <button class="btn danger" id="del-go" style="margin-top:6px" ${tot ? "" : "disabled"}>删除（不可恢复）</button></div>`;
+    $("#del-go").onclick = async () => {
+      if (!confirm(`将永久删除 ${r.from} ~ ${r.to} 的所选数据，无法恢复。确定？`)) return;
+      const d = await post("/api/db/delete", {unit: $("#del-unit").value, value: $("#del-val").value, what: what()});
+      toast(`已删除：选股/盯盘 ${d.deleted.picks || 0} 条，复盘 ${d.deleted.reviews || 0} 篇，收藏 ${d.deleted.favorites || 0} 条`);
+      $("#del-res").innerHTML = ""; load();
+    };
+  } catch (e) { $("#del-res").innerHTML = `<span class="pos">${esc(e.message)}</span>`; }
+};
+function tickClock() {
+  $("#clock").textContent = bjNow("time");
+  const d = bjNow(); $("#clock-sub").innerHTML = "北京时间<br>" + d.slice(5) + " " + WD(d);
+}
+setInterval(tickClock, 1000); tickClock();
+delDefault();
+load().catch(e => $("#dates").innerHTML = `<div class="empty">${esc(e.message)}</div>`);
+</script>
+</body>
+</html>

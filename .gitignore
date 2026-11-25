@@ -1,0 +1,14 @@
+# 运行时生成的数据（每个人自己电脑上的），不要提交
+data/*.db*
+data/*.log
+screener/cache/klines/*.csv
+screener/cache/quotes.json
+screener/cache/scan_latest.json
+screener/cache/*.log
+monitor/cache/*
+!monitor/cache/.gitkeep
+user_data.json
+__pycache__/
+*.pyc
+macapp/build/
+.DS_Store

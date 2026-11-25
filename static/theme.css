@@ -1,0 +1,81 @@
+/* 与 Mac App 一致的深色主题（颜色值取自 macapp/Sources/Models.swift 的 Theme 与 DashboardViz.swift 的 Neon）。
+   放在各页面自己的样式之后加载；用 :root:not(#_) 提高优先级，覆盖页面里的浅色 / 跟随系统配色。 */
+/* 深色（默认）*/
+:root:not(#_) {
+  --bg:#090D12; --panel:#0F151C; --panel2:#141B24; --ink:#E6EDF3; --ink2:#7A8796; --faint:#4A5563;
+  --line:#1E2834; --soft:#141B24; --accent:#5B8DEF; --accent-soft:rgba(91,141,239,.16);
+  --up:#F0605A; --down:#3CC48A; --warn:#E8B931; --good:#3CC48A; --bad:#F0605A; --gold:#F5C451;
+  --cyan:#22D3EE; --violet:#A78BFA; --pink:#F472B6; --ngreen:#34D399; --nblue:#60A5FA; --nred:#F87171;
+  --hi:#FFFFFF; --neon-a:#121A26; --neon-b:#0C121B; --term:#070A0E;
+  --f-body:"PingFang SC","Microsoft YaHei UI","Microsoft YaHei",system-ui,sans-serif;
+  --f-num:ui-monospace,"SF Mono","Cascadia Mono",Consolas,Menlo,monospace;
+  color-scheme: dark;
+}
+/* 浅色：与 Mac App 浅色外观同一组颜色 */
+:root:not(#_)[data-theme="light"] {
+  --bg:#F3F5F8; --panel:#FFFFFF; --panel2:#F1F4F8; --ink:#122033; --ink2:#5A6A80; --faint:#94A3B8;
+  --line:#DDE3EA; --soft:#F1F4F8; --accent:#2563EB; --accent-soft:rgba(37,99,235,.10);
+  --up:#D23F31; --down:#16875A; --warn:#B7791F; --good:#16875A; --bad:#D23F31; --gold:#B8860B;
+  --cyan:#0891B2; --violet:#7C3AED; --pink:#DB2777; --ngreen:#059669; --nblue:#2563EB; --nred:#DC2626;
+  --hi:#0F172A; --neon-a:#FFFFFF; --neon-b:#F6F8FB; --term:#F6F8FA;
+  color-scheme: light;
+}
+/* 跟随系统：系统是浅色时用浅色 */
+@media (prefers-color-scheme: light) {
+  :root:not(#_)[data-theme="system"] {
+    --bg:#F3F5F8; --panel:#FFFFFF; --panel2:#F1F4F8; --ink:#122033; --ink2:#5A6A80; --faint:#94A3B8;
+    --line:#DDE3EA; --soft:#F1F4F8; --accent:#2563EB; --accent-soft:rgba(37,99,235,.10);
+    --up:#D23F31; --down:#16875A; --warn:#B7791F; --good:#16875A; --bad:#D23F31; --gold:#B8860B;
+    --cyan:#0891B2; --violet:#7C3AED; --pink:#DB2777; --ngreen:#059669; --nblue:#2563EB; --nred:#DC2626;
+    --hi:#0F172A; --neon-a:#FFFFFF; --neon-b:#F6F8FB; --term:#F6F8FA;
+    color-scheme: light;
+  }
+}
+html, body { background: var(--bg) !important; color: var(--ink); }
+body { font-family: var(--f-body); }
+.wrap { max-width: 1680px !important; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+a { color: var(--nblue); }
+
+/* 卡片：与 Mac 的 panel() 相同 —— 深色面板 + 细边框 + 12px 圆角 */
+.card { background: var(--panel) !important; border: 1px solid var(--line) !important; border-radius: 12px !important; box-shadow: none !important; }
+.box, .kpi, .sec, .mchip, .methods .m { background: var(--panel2) !important; }
+th { background: var(--panel) !important; color: var(--ink2) !important; }
+th, td { border-color: var(--line) !important; }
+select, input[type=text], input[type=number] { background: var(--panel2) !important; color: var(--ink) !important; border: 1px solid var(--line) !important; border-radius: 6px; }
+.btn { background: var(--accent); color: #fff; border-radius: 7px; }
+.btn.ghost { background: var(--panel2) !important; color: var(--ink) !important; border: 1px solid var(--line) !important; }
+.btn.danger { background: var(--bad); }
+.pos { color: var(--up) !important; } .neg { color: var(--down) !important; }
+
+/* 霓虹发光卡片（统计页驾驶舱） */
+.neon { position: relative; border-radius: 16px; background: linear-gradient(135deg, var(--neon-a), var(--neon-b));
+  border: 1.3px solid var(--c, var(--cyan));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c, var(--cyan)) 18%, transparent), 0 0 0 6px color-mix(in srgb, var(--c, var(--cyan)) 8%, transparent); }
+
+/* 顶部导航：和 Mac 的分段控件一样 */
+nav.top { display: flex !important; align-items: center; gap: 10px !important; margin-bottom: 12px !important; flex-wrap: wrap; }
+nav.top .brand { font-weight: 800; color: var(--ink); margin-right: 6px; font-size: 15px; }
+nav.top .brand small { color: var(--cyan) !important; border: 1px solid color-mix(in srgb, var(--cyan) 60%, transparent); border-radius: 99px; padding: 0 7px; margin-left: 6px; }
+nav.top .seg { display: inline-flex; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 2px; gap: 2px; }
+nav.top .seg a, nav.top > a { color: var(--ink) !important; text-decoration: none; padding: 4px 16px !important; border-radius: 6px; font-size: 13px; font-weight: 500; background: transparent; }
+nav.top .seg a.on, nav.top > a.on { background: var(--accent) !important; color: #fff !important; }
+nav.top .seg a:hover:not(.on) { background: rgba(255,255,255,.05); }
+nav.top .quit { background: var(--panel2) !important; border: 1px solid var(--line) !important; color: var(--ink2) !important; border-radius: 7px; padding: 4px 12px; }
+
+/* 通用小部件 */
+.toast { background: var(--panel2) !important; border: 1px solid var(--gold) !important; color: var(--ink) !important; }
+.modal .box { background: var(--panel) !important; border: 1px solid var(--line) !important; color: var(--ink); }
+.pill { background: transparent !important; border: 1px solid var(--line) !important; }
+.star { color: var(--faint) !important; } .star.on { color: var(--gold) !important; }
+.sub, .dim { color: var(--ink2) !important; }
+.gold { color: var(--gold) !important; }
+.icon-sq { display: inline-grid; place-items: center; width: 60px; height: 60px; border-radius: 14px; font-size: 26px; font-weight: 800;
+  border: 1.5px solid currentColor; background: color-mix(in srgb, currentColor 7%, transparent); flex: none; }
+.bigclock { font: 700 40px var(--f-num); letter-spacing: 1px; }
+footer { color: var(--faint) !important; }
+
+nav.top .theme { background: var(--panel2) !important; border: 1px solid var(--line) !important; color: var(--ink) !important; border-radius: 7px; padding: 3px 6px; font-size: 12.5px; }
+nav.top .seg { flex-wrap: wrap; } nav.top .seg a, nav.top .brand { white-space: nowrap; }
