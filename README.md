@@ -38,18 +38,18 @@
 
 | 文件 | 适用 |
 |---|---|
-| `AI盯盘助手_v1.0.0-beta.1_mac.dmg` | macOS 14 及以上，Apple 芯片和 Intel 都支持 |
-| `AI盯盘助手_v1.0.0-beta.1_Windows.zip` | Windows 10 / 11（64 位，含 ARM 版） |
+| `AIDingPan_v1.0.0-beta.1_mac.dmg` | macOS 14 及以上，Apple 芯片和 Intel 都支持 |
+| `AIDingPan_v1.0.0-beta.1_Windows.zip` | Windows 10 / 11（64 位，含 ARM 版） |
 | `SHA256SUMS.txt` | 校验值 |
 
 两个安装包都**自带运行环境，不需要另外安装 Python**。下载后可以核对校验值，确认文件没有被改动：
 
 ```bash
-shasum -a 256 AI盯盘助手_v1.0.0-beta.1_mac.dmg          # Mac 终端
+shasum -a 256 AIDingPan_v1.0.0-beta.1_mac.dmg          # Mac 终端
 ```
 
 ```powershell
-Get-FileHash AI盯盘助手_v1.0.0-beta.1_Windows.zip      # Windows PowerShell
+Get-FileHash AIDingPan_v1.0.0-beta.1_Windows.zip      # Windows PowerShell
 ```
 
 ## 安装与首次使用
