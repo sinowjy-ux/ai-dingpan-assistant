@@ -42,7 +42,10 @@
 | `AIDingPan_v1.0.0-beta.1_Windows.zip` | Windows 10 / 11（64 位，含 ARM 版） |
 | `SHA256SUMS.txt` | 校验值 |
 
-**国内备用下载（百度网盘）：** 链接：https://pan.baidu.com/s/1D-3MowZc_E1lNS84vCoqbw?pwd=wmnh　提取码：wmnh
+**国内备用下载（百度网盘，按系统选一个即可）：**
+
+- Mac 版：链接：https://pan.baidu.com/s/1adt_UO2J-8jCz77HZSMNIA?pwd=ys39　提取码：ys39
+- Windows 版：链接：https://pan.baidu.com/s/1lzT2Qdu1iIlcXcKQUa9H_g?pwd=2y8v　提取码：2y8v
 
 两个安装包都**自带运行环境，不需要另外安装 Python**。下载后可以核对校验值，确认文件没有被改动：
 
