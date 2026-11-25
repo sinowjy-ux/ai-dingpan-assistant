@@ -38,14 +38,40 @@
 
 | 文件 | 适用 |
 |---|---|
-| `AIDingPan_v1.0.0-beta.1_mac.dmg` | macOS 14 及以上，Apple 芯片和 Intel 都支持 |
-| `AIDingPan_v1.0.0-beta.1_Windows.zip` | Windows 10 / 11（64 位，含 ARM 版） |
-| `SHA256SUMS.txt` | 校验值 |
+| `AIDingPan_v1.0.0-beta.1_mac.dmg` | **Mac 版**安装包：macOS 14 及以上，Apple 芯片和 Intel 都支持 |
+| `AIDingPan_ReadMeFirst_mac.txt` | Mac 首次打开必读 |
+| `AIDingPan_v1.0.0-beta.1_Windows.zip` | **Windows 版**安装包：Windows 10 / 11（64 位，含 ARM 版） |
+| `AIDingPan_ReadMeFirst_Windows.txt` | Windows 首次打开必读 |
+| `AIDingPan_v1.0.0-beta.1_Manual.html` | 说明书（Mac / Windows 通用，用浏览器打开） |
+| `AIDingPan_v1.0.0-beta.1_Demo.mp4` | 本版本演示视频 |
+| `SHA256SUMS.txt` | 安装包校验值 |
 
-**国内备用下载（百度网盘，按系统选一个即可）：**
+**国内备用下载（百度网盘）：** 按自己的电脑选一个即可，每个文件夹里都有安装包、说明书和首次打开必读。
 
-- Mac 版：链接：https://pan.baidu.com/s/1adt_UO2J-8jCz77HZSMNIA?pwd=ys39　提取码：ys39
-- Windows 版：链接：https://pan.baidu.com/s/1lzT2Qdu1iIlcXcKQUa9H_g?pwd=2y8v　提取码：2y8v
+| 下载内容 | 链接 | 提取码 |
+|---|---|---|
+| Mac 版 | https://pan.baidu.com/s/10hFz3eE2Fvq_La_WXDOOdg?pwd=hwuw | `hwuw` |
+| Windows 版 | https://pan.baidu.com/s/1ljPUSIlvaBZ28wWvkxlk5w?pwd=wahy | `wahy` |
+| 整个版本（含两个版本、演示视频、更新日志） | https://pan.baidu.com/s/1yX0XMlEnoHoFDmsa18SDsA?pwd=yzb1 | `yzb1` |
+
+网盘里的目录结构（每个新版本一个文件夹）：
+
+```text
+AI盯盘助手/
+└── AI盯盘助手_v1.0.0-beta.1/
+    ├── Mac版/
+    │   ├── AI盯盘助手_v1.0.0-beta.1_mac.dmg
+    │   ├── 说明书.html
+    │   └── 首次打开必读-mac.txt
+    ├── Windows版/
+    │   ├── AI盯盘助手_v1.0.0-beta.1_Windows.zip
+    │   ├── 说明书.html
+    │   └── 首次打开必读-Windows.txt
+    ├── 演示视频_v1.0.0-beta.1.mp4
+    ├── 更新日志.md
+    ├── 反馈模板.txt
+    └── SHA256SUMS.txt
+```
 
 两个安装包都**自带运行环境，不需要另外安装 Python**。下载后可以核对校验值，确认文件没有被改动：
 
